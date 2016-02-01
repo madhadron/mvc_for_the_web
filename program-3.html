@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Program 3</title>
+		<style>
+		.col-group > div {
+			padding: 0;
+			margin: 0;
+			margin-bottom: 1em;
+		}
+
+		@media screen and (min-width: 44em) {
+			.col-group {
+				overflow: hidden;
+			}
+
+			.col-group > div {
+				float: left;
+				width: 50%;
+			}
+		}
+
+		.entry {
+			text-align: center;
+			background: #ffffbb;
+			padding: 0.3em;
+			margin: 0.3em;
+
+		}
+		.entry > span {
+			display: inline-block;
+		}
+
+		.entry > button.push {
+			float: right;
+		}
+
+		.entry > button.clear {
+			float: left;
+		}
+
+		table {
+			margin-left: auto;
+			margin-right: auto;
+		}
+
+		ul.stack > li {
+			display: block;
+			padding: 0.2em 1em;
+			border: 1px solid #ddd;
+		}
+		</style>
+	</head>
+	<body>
+	</body>
+	<script type="text/javascript">
+	/*
+	   Program 3 - Deeper view trees
+
+	   In the previous example, we built a view tree with one root and
+	   two leaves. That isn't enough to get a feel for the pattern, so
+	   let's tackle a more complicated example. This time we'll build
+	   a four function, reverse Polish calculator. We will have a keypad
+	   for entering numbers and invoking operations, and a display of the
+	   stack.
+
+	   First, we still need the same observable as a prototype for our model.
+	 */
+	var Observable = {
+		observers: new Set(),
+
+		addObserver: function(observer) {
+			this.observers.add(observer);
+		},
+
+		deleteObserver: function(observer) {
+			this.observers.delete(observer);
+		},
+
+		notify: function() {
+			this.observers.forEach(function(observer) {
+				observer.update();
+			});
+		}
+	};
+
+	/*
+	   Our model will be rather more complicated, though. It contains a
+	   stack of numbers, and methods to push to the stack, pop from the stack,
+	   and apply the four functions we support to the top two elements of 
+	   the stack.
+
+	   There is one subtlety: what do we do if someone invokes add, and the
+	   stack has less than two numbers in it? This is our first encounter
+	   with error handling. So we need somewhere with an error message in
+	   the model, and we'll add a view that displays that error message if
+	   there is one.
+
+	   Finally, we need somewhere to store the number the user is constructing
+	   with the keypad. For that, we add a slot, a pushDigit method, and a
+	   toggleSign method, a clearDigits method, and a method to take the entry
+	   being constructed and push it to the stack. For convenience, we will
+	   also provide a method to get the formatted form for the entry.
+	 */
+
+	function EmptyEntry() {
+		this.wholeDigits = [];
+		this.fractionalDigits = [];
+		this.negative = false;
+		this.enteringFractional = false;
+	};
+	
+	var RPNStack = Object.create(Observable);
+	RPNStack.stack = [];
+	RPNStack.error = null;
+	RPNStack.entry = new EmptyEntry();
+	RPNStack.push = function(x) {
+		this.stack.push(x);
+		this.notify();
+	};
+	RPNStack.pop = function() {
+		this.stack.pop();
+		this.notify();
+	};
+	RPNStack.add = function() {
+		if (this.stack.length < 2) {
+			this.error = '+ requires at least two numbers on the stack.';
+		} else {
+			var x = this.stack.pop();
+			var y = this.stack.pop();
+			this.stack.push(x+y);
+		}
+		this.notify();
+	};
+	RPNStack.subtract = function() {
+		if (this.stack.length < 2) {
+			this.error = '- requires at least two numbers on the stack.';
+		} else {
+			var x = this.stack.pop();
+			var y = this.stack.pop();
+			this.stack.push(y - x);
+		}
+		this.notify();
+	};
+	RPNStack.multiply = function() {
+		if (this.stack.length < 2) {
+			this.error = '* requires at least two numbers on the stack.';
+		} else {
+			var x = this.stack.pop();
+			var y = this.stack.pop();
+			this.stack.push(x*y);
+		}
+		this.notify();
+	};
+	RPNStack.divide = function() {
+		if (this.stack.length < 2) {
+			this.error = '/ requires at least two numbers on the stack.';
+		} else {
+			var x = this.stack.pop();
+			var y = this.stack.pop();
+			this.stack.push(y/x);
+		}
+		this.notify();
+	};
+	RPNStack.pushDigit = function(digit) {
+		if (digit < 0 || digit > 9) {
+			this.error = 'Invalid digit: ' + digit;
+		} else if (this.entry.enteringFractional) {
+			this.entry.fractionalDigits.push(digit)
+		} else {
+			this.entry.wholeDigits.push(digit);
+		}
+		this.notify();
+	};
+	RPNStack.toggleSign = function() {
+		this.entry.negative = !this.entry.negative;
+		this.notify();
+	};
+	RPNStack.startFractional = function() {
+		this.entry.enteringFractional = true;
+		this.notify();
+	};
+	RPNStack.clearDigits = function() {
+		this.entry = new EmptyEntry();
+		this.notify();
+	};
+	RPNStack.getFormattedEntry = function() {
+		var s = '';
+		if (this.entry.negative) {
+			s += '-';
+		}
+		if (this.entry.wholeDigits.length > 0) {
+			s += this.entry.wholeDigits.join('');
+		} else {
+			s += '0';
+		}
+		if (this.entry.fractionalDigits.length > 0) {
+			s += '.' + this.entry.fractionalDigits.join('');
+		}
+		return s;
+	};
+	RPNStack.pushEntry = function() {
+		if (this.entry.wholeDigits.length === 0 && this.entry.fractionalDigits === 0) {
+			return;
+		}
+		var s = 0;
+		var pow = 0.1;
+		for (var i = 0; i < this.entry.fractionalDigits.length; i++) {
+			s += this.entry.fractionalDigits[i] * pow;
+			pow *= 0.1;
+		}
+		var pow = 1;
+		for (var i = this.entry.wholeDigits.length - 1; i >= 0; i--) {
+			s += this.entry.wholeDigits[i] * pow;
+			pow *= 10;
+		}
+		if (this.entry.negative) {
+			s *= -1;
+		}
+		this.stack.push(s);
+		this.entry = new EmptyEntry();
+		this.notify();
+	};
+
+	/*
+	   How are we going to lay out the UI? We will divide the screen into
+	   two horizontal columns that reflow into two rows on small screens.
+	   On small screens, the RPN stack goes above the keypad. On large
+	   screens it goes to the right of the keypad.
+
+	   We create a view around the responsive two-column pattern from
+	   http://codepen.io/bradfrost/details/tnhGv.
+
+	 */
+	var TwoColumns = {
+		leftSubviews: [],
+		rightSubviews: [],
+		show: function() {
+			var fragment = document.createDocumentFragment();
+			var div = document.createElement('div');
+			div.setAttribute('class', 'col-group');
+			fragment.appendChild(div);
+
+			var leftDiv = document.createElement('div');
+			this.leftSubviews.forEach(function(subview) {
+				var el = document.createElement('div');
+				leftDiv.appendChild(el);
+				subview.writeOver(el);
+			}, this);
+			div.appendChild(leftDiv);
+
+			var rightDiv = document.createElement('div');
+			this.rightSubviews.forEach(function(subview) {
+				var el = document.createElement('div');
+				rightDiv.appendChild(el);
+				subview.writeOver(el);
+			}, this);
+			div.appendChild(rightDiv);
+
+			document.body.appendChild(fragment);
+		},
+		addLeft: function(view) {
+			this.leftSubviews.push(view);
+		},
+		addRight: function(view) {
+			this.rightSubviews.push(view);
+		}
+	};
+
+	/*
+	   In the left column, we pack two divs, one containing a view
+	   of the number entered so far and a putton to push it to the stack,
+	   and the second containing a table with the keypad.
+	 */
+	var EntryView = {
+		writeOver: function(el) {
+			var newEl = document.createElement('div');
+			newEl.setAttribute('class', 'entry');
+
+			var clearButton = document.createElement('button');
+			clearButton.textContent = 'Clear';
+			clearButton.setAttribute('class', 'clear');
+			clearButton.addEventListener('click', function() {
+				RPNStack.clearDigits();
+			});
+			newEl.appendChild(clearButton);
+			
+			var display = document.createElement('span');
+			var entry = RPNStack.getFormattedEntry();
+			display.appendChild(
+				document.createTextNode(RPNStack.getFormattedEntry())
+			);
+			this.display = display;
+			newEl.appendChild(display);
+
+			var button = document.createElement('button');
+			button.textContent = 'Push >>';
+			button.setAttribute('class', 'push');
+			//button.appendChild(document.createTextNode('Push >>'));
+			button.onclick = function() {
+				RPNStack.pushEntry();
+			}
+			newEl.appendChild(button);
+			
+			el.parentNode.replaceChild(newEl, el);
+		},
+		update: function() {
+			var entry = RPNStack.getFormattedEntry();
+			var newText = document.createTextNode(entry);
+			var newDisplay = document.createElement('span');
+			newDisplay.appendChild(newText);
+			this.display.parentNode.replaceChild(newDisplay, this.display);
+			this.display = newDisplay;
+		}
+	};
+	RPNStack.addObserver(EntryView);
+	TwoColumns.addLeft(EntryView);
+
+	/*
+	   Next, we add the keypad as a table. 
+
+	   The keypad has a lot of repeated code for the buttons and for creating
+	   the rows. We will see in a later program how to create reusable views 
+	   to eliminate much of that code.
+	 */
+	var Keypad = {
+		writeOver: function(el) {
+			var table = document.createElement('table');
+			var tr, td, button;
+
+			var disableOperations = RPNStack.stack.length < 2;
+			
+			// Row 1: 7 8 9 +
+			tr = document.createElement('tr');
+
+			td = document.createElement('td');
+			button = document.createElement('button');
+			button.textContent = '7';
+			button.addEventListener('click', function() { RPNStack.pushDigit(7); });
+			td.appendChild(button);
+			tr.appendChild(td);
+
+			td = document.createElement('td');
+			button = document.createElement('button');
+			button.textContent = '8';
+			button.addEventListener('click', function() { RPNStack.pushDigit(8); });
+			td.appendChild(button);
+			tr.appendChild(td);
+
+			td = document.createElement('td');
+			button = document.createElement('button');
+			button.textContent = '9';
+			button.addEventListener('click', function() { RPNStack.pushDigit(9); });
+			td.appendChild(button);
+			tr.appendChild(td);
+
+			td = document.createElement('td');
+			button = document.createElement('button');
+			button.textContent = '+';
+			button.disabled = disableOperations;
+			button.addEventListener('click', function() { RPNStack.add(); });
+			this.addButton = button;
+			td.appendChild(button);
+			tr.appendChild(td);
+
+			table.appendChild(tr);
+
+			// Row 2: 4 5 6 *
+			tr = document.createElement('tr');
+
+			td = document.createElement('td');
+			button = document.createElement('button');
+			button.textContent = '4';
+			button.addEventListener('click', function() { RPNStack.pushDigit(4); });
+			td.appendChild(button);
+			tr.appendChild(td);
+
+			td = document.createElement('td');
+			button = document.createElement('button');
+			button.textContent = '5';
+			button.addEventListener('click', function() { RPNStack.pushDigit(5); });
+			td.appendChild(button);
+			tr.appendChild(td);
+
+			td = document.createElement('td');
+			button = document.createElement('button');
+			button.textContent = '6';
+			button.addEventListener('click', function() { RPNStack.pushDigit(6); });
+			td.appendChild(button);
+			tr.appendChild(td);
+
+			td = document.createElement('td');
+			button = document.createElement('button');
+			button.textContent = '*';
+			button.disabled = disableOperations;
+			button.addEventListener('click', function() { RPNStack.multiply(); });
+			this.multiplyButton = button;
+			td.appendChild(button);
+			tr.appendChild(td);
+			table.appendChild(tr);
+
+			// Row 3: 1 2 3 -
+			tr = document.createElement('tr');
+
+			td = document.createElement('td');
+			button = document.createElement('button');
+			button.textContent = '1';
+			button.addEventListener('click', function() { RPNStack.pushDigit(1); });
+			td.appendChild(button);
+			tr.appendChild(td);
+
+			td = document.createElement('td');
+			button = document.createElement('button');
+			button.textContent = '2';
+			button.addEventListener('click', function() { RPNStack.pushDigit(2); });
+			td.appendChild(button);
+			tr.appendChild(td);
+
+			td = document.createElement('td');
+			button = document.createElement('button');
+			button.textContent = '3';
+			button.addEventListener('click', function() { RPNStack.pushDigit(3); });
+			td.appendChild(button);
+			tr.appendChild(td);
+
+			td = document.createElement('td');
+			button = document.createElement('button');
+			button.textContent = '-';
+			button.disabled = disableOperations;
+			button.addEventListener('click', function() { RPNStack.subtract(); });
+			this.subtractButton = button;
+			td.appendChild(button);
+			tr.appendChild(td);
+			table.appendChild(tr);
+
+			// Row 4: 0  . /
+			tr = document.createElement('tr');
+
+			td = document.createElement('td');
+			td.setAttribute('colspan', '2');
+			button = document.createElement('button');
+			button.textContent = '0';
+			button.addEventListener('click', function() { RPNStack.pushDigit(0); });
+			td.appendChild(button);
+			tr.appendChild(td);
+
+			td = document.createElement('td');
+			button = document.createElement('button');
+			button.textContent = '.';
+			button.addEventListener('click', function() { RPNStack.startFractional(); });
+			td.appendChild(button);
+			tr.appendChild(td);
+
+			td = document.createElement('td');
+			button = document.createElement('button');
+			button.textContent = '/';
+			button.disabled = disableOperations;
+			button.addEventListener('click', function() { RPNStack.divide(); });
+			this.divideButton = button;
+			td.appendChild(button);
+			tr.appendChild(td);
+
+			table.appendChild(tr);
+			
+			el.parentNode.replaceChild(table, el);
+		},
+		update: function() {
+			var disableOperations = RPNStack.stack.length < 2;
+			this.addButton.disabled = disableOperations;
+			this.multiplyButton.disabled = disableOperations;
+			this.subtractButton.disabled = disableOperations;
+			this.divideButton.disabled = disableOperations;
+		}
+	};
+	RPNStack.addObserver(Keypad);
+	TwoColumns.addLeft(Keypad);
+	
+	/*
+	   Finally, we need to show the stack itself. We will do this as a 
+	   vertical list of numbers.
+	 */
+	var StackView = {
+		writeOver: function(el) {
+			var ul = document.createElement('ul');
+			ul.setAttribute('class', 'stack');
+			var li;
+			for (var i = 0; i < RPNStack.stack.length; i++) {
+				li = document.createElement('li');
+				li.textContent = RPNStack.stack[i];
+				ul.appendChild(li);
+			}
+			if (RPNStack.stack.length === 0) {
+				li = document.createElement('li');
+				var em = document.createElement('em');
+				em.textContent = '(Empty stack)';
+				li.appendChild(em);
+				ul.appendChild(li);
+			}
+
+			this.el = ul;
+			el.parentNode.replaceChild(ul, el);
+		},
+		update: function() {
+			if (this.el) {
+				this.writeOver(this.el);
+			}
+		}
+	};
+	RPNStack.addObserver(StackView);
+	TwoColumns.addRight(StackView);
+	
+	document.addEventListener('DOMContentLoaded', function() {
+		TwoColumns.show();
+	});
+	</script>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Program 2</title>
+	</head>
+	<body>
+	</body>
+	<script type="text/javascript">
+	/*
+	   Program 2 - View trees
+
+	   In the previous program we manually inserted placeholders for our
+	   views in the HTML, but what would happen if we had a variable number
+	   of rows? In practice, such scaffolding quickly becomes awkward. This
+	   brings us to our next technique of MVC: arranging views into trees.
+
+	   We keep the observable, counter, and both views from the previous
+	   program.
+	*/
+	var Observable = {
+		observers: new Set(),
+
+		addObserver: function(observer) {
+			this.observers.add(observer);
+		},
+
+		deleteObserver: function(observer) {
+			this.observers.delete(observer);
+		},
+
+		notify: function() {
+			this.observers.forEach(function(observer) {
+				observer.update();
+			});
+		}
+	};
+
+	var Counter = Object.create(Observable);
+	Counter.count = 0;
+	Counter.increment = function() {
+		this.count += 1;
+		this.notify();
+	};
+
+	var CounterDisplay = {
+		writeOver: function(el) {
+			var span = document.createElement('span');
+			span.appendChild(document.createTextNode('Counter: '));
+			this.text = document.createTextNode(Counter.count);
+			span.appendChild(this.text);
+			el.parentNode.replaceChild(span, el);
+		},
+		update: function() {
+			if (this.text) {
+				var newText = document.createTextNode(Counter.count);
+				this.text.parentNode.replaceChild(newText, this.text);
+				this.text = newText;
+			}
+		},
+	};
+	Counter.addObserver(CounterDisplay);
+
+	var IncrementButton = {
+		writeOver: function(el) {
+			var button = document.createElement('button');
+			button.appendChild(document.createTextNode('Increment'));
+			button.onclick = function() {
+				Counter.increment();
+			};
+			this.el = button;
+			el.parentNode.replaceChild(button, el);
+		},
+		update: function() {
+			if (this.el) {
+				this.writeOver(this.el);
+			}
+		}
+	};
+	Counter.addObserver(IncrementButton);
+
+	/*
+	   In the previous program we had to get the elements to feed to
+	   CounterDisplay and IncrementButton by hand, and we will always
+	   have to feed the root of our tree an element.
+
+	   We will create our first reusable view. It is also our first
+	   object that is not a one-off, so we create a function to generate
+	   it.
+	 */
+	var ElementView = function(el) {
+		this.subviews = [];
+		this.add = function(view) {
+			this.subviews.push(view);
+		};
+		this.show = function() {
+			/*
+			   It is much more performant to create a document
+			   fragment, do all the rendering to it,
+			   and then insert it into the DOM.
+			 */
+			var fragment = document.createDocumentFragment();
+			for (var i = 0; i < this.subviews.length; i++) {
+				var subEl = document.createElement('div');
+				fragment.appendChild(subEl);
+				this.subviews[i].writeOver(subEl);
+			}
+			el.appendChild(fragment);
+		};
+	}
+
+	/*
+	   To use it, we create an ElementView pointing at the body, which 
+	   relieves us of writing any scaffolding at all.
+	*/
+	document.addEventListener('DOMContentLoaded', function() {
+		var ev = new ElementView(document.body);
+		ev.add(CounterDisplay);
+		ev.add(IncrementButton);
+		ev.show();
+		
+	});
+	</script>
+</html>

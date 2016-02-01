@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Program 1</title>
+	</head>
+	<body>
+		<div id="display"></div>
+		<div id="button"></div>
+	</body>
+	<script type="text/javascript">
+	"use strict";
+	/*
+	   Program 1 - Views
+
+	   In this program we add a simple UI around the counter, consisting
+	   of text displaying the value of the counter, and a button that
+	   increments the counter.
+	*/
+	var Observable = {
+		observers: new Set(),
+
+		addObserver: function(observer) {
+			this.observers.add(observer);
+		},
+
+		deleteObserver: function(observer) {
+			this.observers.delete(observer);
+		},
+
+		notify: function() {
+			this.observers.forEach(function(observer) {
+				observer.update();
+			});
+		}
+	};
+
+	var Counter = Object.create(Observable);
+	Counter.count = 0;
+	Counter.increment = function() {
+		this.count += 1;
+		this.notify();
+	};
+
+	/*
+	   Views need to have an 'update' method for the observable to call,
+	   and a method to draw themselves.
+	 */
+	var CounterDisplay = {
+		writeOver: function(el) {
+			var span = document.createElement('span');
+			span.appendChild(document.createTextNode('Counter: '));
+			this.text = document.createTextNode(Counter.count);
+			span.appendChild(this.text);
+			el.parentNode.replaceChild(span, el);
+		},
+		update: function() {
+			if (this.text) {
+				var newText = document.createTextNode(Counter.count);
+				this.text.parentNode.replaceChild(newText, this.text);
+				this.text = newText;
+			}
+		},
+	};
+	Counter.addObserver(CounterDisplay);
+
+	/*
+	   CounterDisplay is optimized so only a single text node is changed
+	   on update. We will illustrate a cruder approach with the button,
+	   where we simply replace the entire element on each update. We could
+	   easily optimize the button the same way, but in some complicated cases,
+	   the simplicity of fully redrawing may outweigh any performance loss.
+	 */
+	var IncrementButton = {
+		writeOver: function(el) {
+			var button = document.createElement('button');
+			button.appendChild(document.createTextNode('Increment'));
+			button.onclick = function() {
+				Counter.increment();
+			};
+			this.el = button;
+			el.parentNode.replaceChild(button, el);
+		},
+		update: function() {
+			if (this.el) {
+				this.writeOver(this.el);
+			}
+		}
+	};
+	Counter.addObserver(IncrementButton);
+
+	/*
+	   Some implementations pass the parent element of a view instead of the
+	   element it should replace, but doing so makes the trivial update 
+	   function above more complicated.
+
+	   Finally, we need to actually write the views to the DOM. We need
+	   the DOM to be ready, though, so we add a callback on the DOMContentLoaded
+	   event.
+	 */
+	document.addEventListener('DOMContentLoaded', function() {
+		CounterDisplay.writeOver(document.getElementById('display'));
+		IncrementButton.writeOver(document.getElementById('button'));
+	});
+	</script>
+</html>

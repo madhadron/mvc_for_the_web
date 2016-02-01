@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Program 0</title>
+	</head>
+	<body>
+	</body>
+	<script type="text/javascript">
+	"use strict";
+	/*
+	   Program 0 - Observables
+
+	   Our first few programs will all involve a simple counter. In this
+	   one, the only UI for that counter will be a line logged to the console
+	   when it is incremented.
+
+	   The first of the techniques in MVC to control complexity is
+	   keeping all state in one place, and make the code handling it
+	   completely agnostic with respect to any views of the state. All
+	   the state is maintained by an object referred to as the 'model'.
+	   All views wanting to know about changing state register with the
+	   model, and the model notifies all registered views when there is
+	   a change. This register and notify structure goes under the name
+	   of the 'observer pattern.'
+
+	   We create an Observable object to act as the prototype of models.
+	   All observers must have a method called 'update' that is invoked
+	   when the observable notifies them.
+	 */
+
+	var Observable = {
+		observers: new Set(),
+
+		addObserver: function(observer) {
+			this.observers.add(observer);
+		},
+
+		deleteObserver: function(observer) {
+			this.observers.delete(observer);
+		},
+
+		notify: function() {
+			this.observers.forEach(function(observer) {
+				observer.update();
+			});
+		}
+	};
+
+	/*
+	   Here is our model. For creating one-off objects with a particular
+	   prototype, this is the general pattern: invoke Object.create, then
+	   set fields on the object.
+	 */
+	var Counter = Object.create(Observable);
+	Counter.count = 0;
+	Counter.increment = function() {
+		this.count += 1;
+		this.notify();
+	};
+
+	/*
+	   Finally, we need a trivial observer.
+	 */
+	var LogCounter = {
+		update: function() {
+			console.log('Count is ' + Counter.count);
+		}
+	};
+	Counter.addObserver(LogCounter);
+
+	/*
+	   In our next example we will start creating actual UI to interact
+	   with, but for now drive this from the console by invoking
+	   Counter.increment();
+	*/
+	</script>
+</html>
