@@ -2,6 +2,21 @@
 <html>
 	<head>
 		<title>Program 2</title>
+		<style>
+		body {
+			text-align: center;
+		}
+		div#container {
+			display: inline-block;
+			padding: 0.5em;
+			margin-top: 3em;
+			margin-bottom: 3em;
+			border: 0.1em solid #555;
+		}
+		button {
+			margin-left: 1em;
+		}
+		</style>
 	</head>
 	<body>
 	</body>
@@ -99,9 +114,12 @@
 			   and then insert it into the DOM.
 			 */
 			var fragment = document.createDocumentFragment();
+			var container = document.createElement('div');
+			container.setAttribute('id', 'container');
+			fragment.appendChild(container);
 			for (var i = 0; i < this.subviews.length; i++) {
 				var subEl = document.createElement('div');
-				fragment.appendChild(subEl);
+				container.appendChild(subEl);
 				this.subviews[i].writeOver(subEl);
 			}
 			el.appendChild(fragment);

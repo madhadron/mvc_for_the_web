@@ -41,6 +41,11 @@ Further material I plan to cover:
 
 All the programs in this repository are licensed under the MIT License. See the LICENSE file for details.
 
-# Authors
+## Authors
 
 * Fred Ross (`fred at madhadron dot com`)
+
+## Resources
+
+* [Responsive web design patterns](http://bradfrost.github.io/this-is-responsive/patterns.html)
+* [You Don't Know JS: `this` and Object Prototypes](https://github.com/getify/You-Dont-Know-JS/blob/master/this%20&%20object%20prototypes/README.md#you-dont-know-js-this--object-prototypes)
