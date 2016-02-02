@@ -14,7 +14,7 @@ MVC is often taken to be a particular architecture or organization of code. This
 
 The examples consist of single, self contained HTML files. All CSS and JavaScript is inline in the HTML. None of the examples use any external libraries, nor have I felt their lack. Of particular note, I make full use JavaScript's prototype based object system. Trying to impose a class system in JavaScript is foolish, since the prototype based system is both simpler and more flexible. If you need to learn how to use JavaScript's object system, I recommend [You Don't Know JS: `this` and Object Prototypes](https://github.com/getify/You-Dont-Know-JS/blob/master/this%20&%20object%20prototypes/README.md#you-dont-know-js-this--object-prototypes).
 
-The code depends on conservative choices of technology. The JavaScript is all ECMAScript 5. The page layouts use the traditional box model. I do use the HTML5 doctype and elements, but don't impose very onerous burdens on it. Everything should work in most modern browsers.
+The code depends on conservative choices of technology. The JavaScript is all ECMAScript 5, except for using ECMAScript 6's Set collection, which is fairly broadly supported. The page layouts use the traditional box model. I do use the HTML5 doctype and elements, but don't impose very onerous burdens on it. Everything should work in most modern browsers.
 
 ## Contents
 
