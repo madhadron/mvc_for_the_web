@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Program 4</title>
+		<style>
+		</style>
+	</head>
+	<body>
+	</body>
+	<script type="text/javascript">
+	/*
+	   Program 4 - Push protocols in models
+
+	   So far all our models have notified views that something has changed
+	   and left it to the views to figure out what needs to be done. For
+	   some cases this will not work, in particular if the model
+	   is changing steadily with time and views need to always display
+	   a consistent view of it. In this case we have the model's calls to
+	   notify push the necessary state for the views to update themselves
+	   so we can ensure that all views receive the same data.
+
+	   Our example will be a simulation of perfectly elastic collisions of
+	   a set of balls in a box. We will have two views, one showing the
+	   balls bouncing around in the box, and one giving a list of the
+	   balls with their current coordinates. We will also provide controls
+	   for the user to add and remove balls.
+
+	   Our Observable changes slightly, since notify now needs to pass
+	   information to update.
+	 */
+	var Observable = {
+		observers: new Set(),
+
+		addObserver: function(observer) {
+			this.observers.add(observer);
+		},
+
+		deleteObserver: function(observer) {
+			this.observers.delete(observer);
+		},
+
+		notify: function(message) {
+			this.observers.forEach(function(observer) {
+				observer.update(message);
+			});
+		}
+	};
+
+	function randomCoordinates() {
+		var v = Object.create(null);
+		v.x = null;
+		v.y = null;
+		v.vx = null;
+		v.vy = null;
+		return v
+	}
+
+	function shallowCopy(obj) {
+		var newObj = Object.create(obj.__proto__);
+		for (var k in obj) {
+			if (obj.hasOwnProperty(k)) {
+				newObj[k] = obj[k];
+			}
+		}
+		return newObj;
+	}
+	
+	/*
+	   Our model's state will consist of a list of coordinates and
+	   velocities of the balls involved. We provide methods to add
+	   and remove balls as an API, and methods to step the simulation,
+	   and to start and pause the simulation.
+	 */
+	var Balls = Object.create(Observable);
+	Balls.balls = [];
+	Balls.addBall = function(coordinates) {
+		this.add(coordinates);
+		this.notify(this.snapshot());
+	};
+	Balls.snapshot = function() {
+		var s = [];
+		for (var i = 0; i < this.balls.length; i++) {
+			s.append(shallowCopy(this.balls[i]));
+		});
+		return s
+	};
+	Balls.removeBall = function(i) {
+		this.balls.splice(i, 1);
+		this.notify(this.snapshot());
+	};
+	Balls.step = function() {
+		// TODO: Step the simulation
+	};
+	Balls.go = function() {
+		// TODO
+	};
+	Balls.pause = function() {
+		// TODO
+	};
+
+	/*
+	   We use the same two column layout that we used for the calculator as
+	   our root element.
+	 */
+	var TwoColumns = {
+		leftSubviews: [],
+		rightSubviews: [],
+		show: function() {
+			var fragment = document.createDocumentFragment();
+			var div = document.createElement('div');
+			div.setAttribute('class', 'col-group');
+			fragment.appendChild(div);
+
+			var leftDiv = document.createElement('div');
+			this.leftSubviews.forEach(function(subview) {
+				var el = document.createElement('div');
+				leftDiv.appendChild(el);
+				subview.writeOver(el);
+			}, this);
+			div.appendChild(leftDiv);
+
+			var rightDiv = document.createElement('div');
+			this.rightSubviews.forEach(function(subview) {
+				var el = document.createElement('div');
+				rightDiv.appendChild(el);
+				subview.writeOver(el);
+			}, this);
+			div.appendChild(rightDiv);
+
+			document.body.appendChild(fragment);
+		},
+		addLeft: function(view) {
+			this.leftSubviews.push(view);
+		},
+		addRight: function(view) {
+			this.rightSubviews.push(view);
+		}
+	};
+
+	/*
+	   Next we write the display of the bouncing balls in the left
+	   column, along with play and pause buttons.
+	 */
+
+
+	/*
+	   In the right column, we render a table showing the coordinates
+	   of each ball, plus controls to delete a particular ball and
+	   a button to add a new ball at a random location and velocity.
+	 */
+
+	document.addEventListener('DOMContentLoaded', function() {
+		TwoColumns.show();
+		Ball.go();
+	});
+	
+	</script>
+</html>
