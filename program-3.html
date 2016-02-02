@@ -3,6 +3,9 @@
 	<head>
 		<title>Program 3</title>
 		<style>
+		body {
+			line-height: 1.2em;
+		}
 		.col-group > div {
 			padding: 0;
 			margin: 0;
@@ -25,7 +28,10 @@
 		.entry {
 			text-align: center;
 			border: 0.1em solid #aaa;
-			padding: 1em 0.5em;
+			padding-top: 1.8em;
+			padding-bottom: 1.4em;
+			padding-left: 1em;
+			padding-right: 1em;
 			margin-bottom: 0.5em;
 		}
 		.entry > button.clear {
@@ -38,25 +44,34 @@
 			display: inline-block;
 		}
 
-		table {
-			border: 0.1em solid #aaa;
-		}
-		td > button {
-			width: 100%;
+		.keypad > button {
+			width: 25%;
 			height: 4em;
+		}
+		.keypad > button.zero {
+			width: 50%;
 		}
 		
 		ul.stack {
 			border: 0.1em solid #aaa;
-			margin: 0 0.5em;
-			padding: 0.5em;
-			min-height: 16em;
+			margin: 0 0.4em;
+			min-height: 12.2em;
 			overflow-y: auto;
+			padding-top: 0.9em;
 		}
 		
 		ul.stack > li {
 			display: block;
-			padding: 0.5em 1em;
+			margin: 0;
+			padding: 0;
+			margin-top: 0.8em;
+		}
+
+		button.drop {
+			width: 98%;
+			height: 4em;
+			margin-left: 0.6em;
+			margin-right: 1em;
 		}
 		</style>
 	</head>
@@ -334,144 +349,130 @@
 	 */
 	var Keypad = {
 		writeOver: function(el) {
-			var table = document.createElement('table');
-			var tr, td, button;
-
-			var disableOperations = RPNStack.stack.length < 2;
+			var div = document.createElement('div');
+			div.setAttribute('class', 'keypad');
+			var button;
 			
-			// Row 1: 7 8 9 +
-			tr = document.createElement('tr');
+			var disableOperations = RPNStack.stack.length < 2;
 
-			td = document.createElement('td');
 			button = document.createElement('button');
 			button.textContent = '7';
-			button.addEventListener('click', function() { RPNStack.pushDigit(7); });
-			td.appendChild(button);
-			tr.appendChild(td);
+			button.addEventListener('click', function() {
+				RPNStack.pushDigit(7);
+			});
+			div.appendChild(button);
 
-			td = document.createElement('td');
 			button = document.createElement('button');
 			button.textContent = '8';
-			button.addEventListener('click', function() { RPNStack.pushDigit(8); });
-			td.appendChild(button);
-			tr.appendChild(td);
+			button.addEventListener('click', function() {
+				RPNStack.pushDigit(8);
+			});
+			div.appendChild(button);
 
-			td = document.createElement('td');
 			button = document.createElement('button');
 			button.textContent = '9';
-			button.addEventListener('click', function() { RPNStack.pushDigit(9); });
-			td.appendChild(button);
-			tr.appendChild(td);
+			button.addEventListener('click', function() {
+				RPNStack.pushDigit(9);
+			});
+			div.appendChild(button);
 
-			td = document.createElement('td');
 			button = document.createElement('button');
 			button.textContent = '+';
 			button.disabled = disableOperations;
-			button.addEventListener('click', function() { RPNStack.add(); });
+			button.addEventListener('click', function() {
+				RPNStack.add();
+			});
 			this.addButton = button;
-			td.appendChild(button);
-			tr.appendChild(td);
+			div.appendChild(button);
 
-			table.appendChild(tr);
-
-			// Row 2: 4 5 6 *
-			tr = document.createElement('tr');
-
-			td = document.createElement('td');
 			button = document.createElement('button');
 			button.textContent = '4';
-			button.addEventListener('click', function() { RPNStack.pushDigit(4); });
-			td.appendChild(button);
-			tr.appendChild(td);
+			button.addEventListener('click', function() {
+				RPNStack.pushDigit(4);
+			});
+			div.appendChild(button);
 
-			td = document.createElement('td');
 			button = document.createElement('button');
 			button.textContent = '5';
-			button.addEventListener('click', function() { RPNStack.pushDigit(5); });
-			td.appendChild(button);
-			tr.appendChild(td);
+			button.addEventListener('click', function() {
+				RPNStack.pushDigit(5);
+			});
+			div.appendChild(button);
 
 			td = document.createElement('td');
 			button = document.createElement('button');
 			button.textContent = '6';
-			button.addEventListener('click', function() { RPNStack.pushDigit(6); });
-			td.appendChild(button);
-			tr.appendChild(td);
+			button.addEventListener('click', function() {
+				RPNStack.pushDigit(6);
+			});
+			div.appendChild(button);
 
 			td = document.createElement('td');
 			button = document.createElement('button');
 			button.textContent = '*';
 			button.disabled = disableOperations;
-			button.addEventListener('click', function() { RPNStack.multiply(); });
+			button.addEventListener('click', function() {
+				RPNStack.multiply();
+			});
 			this.multiplyButton = button;
-			td.appendChild(button);
-			tr.appendChild(td);
-			table.appendChild(tr);
+			div.appendChild(button);
 
-			// Row 3: 1 2 3 -
-			tr = document.createElement('tr');
-
-			td = document.createElement('td');
 			button = document.createElement('button');
 			button.textContent = '1';
-			button.addEventListener('click', function() { RPNStack.pushDigit(1); });
-			td.appendChild(button);
-			tr.appendChild(td);
+			button.addEventListener('click', function() {
+				RPNStack.pushDigit(1);
+			});
+			div.appendChild(button);
 
-			td = document.createElement('td');
 			button = document.createElement('button');
 			button.textContent = '2';
-			button.addEventListener('click', function() { RPNStack.pushDigit(2); });
-			td.appendChild(button);
-			tr.appendChild(td);
+			button.addEventListener('click', function() {
+				RPNStack.pushDigit(2);
+			});
+			div.appendChild(button);
 
-			td = document.createElement('td');
 			button = document.createElement('button');
 			button.textContent = '3';
-			button.addEventListener('click', function() { RPNStack.pushDigit(3); });
-			td.appendChild(button);
-			tr.appendChild(td);
+			button.addEventListener('click', function() {
+				RPNStack.pushDigit(3);
+			});
+			div.appendChild(button);
 
-			td = document.createElement('td');
 			button = document.createElement('button');
 			button.textContent = '-';
 			button.disabled = disableOperations;
-			button.addEventListener('click', function() { RPNStack.subtract(); });
+			button.addEventListener('click', function() {
+				RPNStack.subtract();
+			});
 			this.subtractButton = button;
-			td.appendChild(button);
-			tr.appendChild(td);
-			table.appendChild(tr);
+			div.appendChild(button);
 
-			// Row 4: 0  . /
-			tr = document.createElement('tr');
 
-			td = document.createElement('td');
-			td.setAttribute('colspan', '2');
 			button = document.createElement('button');
+			button.setAttribute('class', 'zero')
 			button.textContent = '0';
-			button.addEventListener('click', function() { RPNStack.pushDigit(0); });
-			td.appendChild(button);
-			tr.appendChild(td);
+			button.addEventListener('click', function() {
+				RPNStack.pushDigit(0);
+			});
+			div.appendChild(button);
 
-			td = document.createElement('td');
 			button = document.createElement('button');
 			button.textContent = '.';
-			button.addEventListener('click', function() { RPNStack.startFractional(); });
-			td.appendChild(button);
-			tr.appendChild(td);
+			button.addEventListener('click', function() {
+				RPNStack.startFractional();
+			});
+			div.appendChild(button);
 
-			td = document.createElement('td');
 			button = document.createElement('button');
 			button.textContent = '/';
 			button.disabled = disableOperations;
-			button.addEventListener('click', function() { RPNStack.divide(); });
+			button.addEventListener('click', function() {
+				RPNStack.divide();
+			});
 			this.divideButton = button;
-			td.appendChild(button);
-			tr.appendChild(td);
-
-			table.appendChild(tr);
+			div.appendChild(button);
 			
-			el.parentNode.replaceChild(table, el);
+			el.parentNode.replaceChild(div, el);
 		},
 		update: function() {
 			var disableOperations = RPNStack.stack.length < 2;
@@ -517,6 +518,20 @@
 	};
 	RPNStack.addObserver(StackView);
 	TwoColumns.addRight(StackView);
+
+	var dropButton = {
+		writeOver: function(el) {
+			var button = document.createElement('button');
+			button.setAttribute('class', 'drop');
+			button.textContent = 'Drop';
+			button.addEventListener('click', function() {
+				RPNStack.pop();
+			});
+			el.parentNode.replaceChild(button, el);
+		}
+	};
+	TwoColumns.addRight(dropButton);
+		
 	
 	document.addEventListener('DOMContentLoaded', function() {
 		TwoColumns.show();
