@@ -91,7 +91,9 @@
 	   First, we still need the same observable as a prototype for our model.
 	 */
 	var Observable = {
-		observers: new Set(),
+		initializeObservable: function() {
+			this.observers = new Set();
+		},
 
 		addObserver: function(observer) {
 			this.observers.add(observer);
@@ -135,6 +137,7 @@
 	};
 	
 	var RPNStack = Object.create(Observable);
+	RPNStack.initializeObservable();
 	RPNStack.stack = [];
 	RPNStack.error = null;
 	RPNStack.entry = new EmptyEntry();

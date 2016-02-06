@@ -34,7 +34,9 @@
 	   increments the counter.
 	*/
 	var Observable = {
-		observers: new Set(),
+		initializeObservable: function() {
+			this.observers = new Set();
+		},
 
 		addObserver: function(observer) {
 			this.observers.add(observer);
@@ -52,6 +54,7 @@
 	};
 
 	var Counter = Object.create(Observable);
+	Counter.initializeObservable();
 	Counter.count = 0;
 	Counter.increment = function() {
 		this.count += 1;
