@@ -3,6 +3,58 @@
 	<head>
 		<title>Program 4</title>
 		<style>
+		.col-group > div {
+			padding: 0;
+			margin: 0;
+			margin-bottom: 1em;
+		}
+
+		@media screen and (min-width: 44em) {
+			.col-group {
+				overflow: hidden;
+			}
+
+			.col-group > div {
+				float: left;
+				width: 50%;
+			}
+
+
+		}
+
+		table {
+			width: 100%;
+		}
+		
+		td {
+			width: 50%;
+			text-align: center;
+		}
+
+		th {
+			text-align: center;
+			font-style: italic;
+			font-weight: normal;
+		}
+
+		svg {
+			width: calc(100% - 0.2em);
+			border: 0.1em solid #aaa;
+		}
+
+		circle {
+			fill: #aaa;
+			stroke: black;
+			stroke-width: 1px;
+		}
+		rect {
+			fill: #000;
+		}
+
+		button {
+			width: 100%;
+			height: 4em;
+		}
 		</style>
 	</head>
 	<body>
@@ -19,17 +71,19 @@
 	   notify push the necessary state for the views to update themselves
 	   so we can ensure that all views receive the same data.
 
-	   Our example will be a simulation of perfectly elastic collisions of
-	   a set of balls in a box. We will have two views, one showing the
-	   balls bouncing around in the box, and one giving a list of the
-	   balls with their current coordinates. We will also provide controls
-	   for the user to add and remove balls.
+	   Our example will be a simulation of a ball bouncing back and forth on
+	   a one dimensional track, with elastic reflections at the walls.
+	   We will have two views, one showing the balls bouncing back and forth,
+	   and one showing its current coordinates and velocity. We will also
+	   provide controls to pause and resume the simulation.
 
 	   Our Observable changes slightly, since notify now needs to pass
 	   information to update.
 	 */
 	var Observable = {
-		observers: new Set(),
+		initializeObservable: function() {
+			this.observers = new Set();
+		},
 
 		addObserver: function(observer) {
 			this.observers.add(observer);
@@ -64,39 +118,70 @@
 		}
 		return newObj;
 	}
-	
+
 	/*
-	   Our model's state will consist of a list of coordinates and
-	   velocities of the balls involved. We provide methods to add
-	   and remove balls as an API, and methods to step the simulation,
-	   and to start and pause the simulation.
+	   Our model's state will consist of the coordinates and
+	   velocities of the ball, its radius, and the time at which those
+	   values were valid. We provide methods to step the simulation,
+	   and to pause and resume it.
 	 */
-	var Balls = Object.create(Observable);
-	Balls.balls = [];
-	Balls.addBall = function(coordinates) {
-		this.add(coordinates);
-		this.notify(this.snapshot());
+	var Ball = Object.create(Observable);
+	Ball.initializeObservable();
+
+	Ball.radius = 50;
+	Ball.trackLength = 1000;
+	Ball.x = Math.random()*(Ball.trackLength-2*Ball.radius) + Ball.radius; 
+	Ball.v = 0.25;
+	Ball.t = null;
+
+	Ball.timer = null;
+
+	Ball.step = function(dt) {
+		// Calculate the amount of time to advance our
+		// simulation, and update the time on the model.
+		var r = this.radius;
+		var x = this.x;
+		var v = this.v;
+		var L = Ball.trackLength;
+		if (x + v*dt < r) {
+			// Bounce off left wall
+			dtAfterBounce = dt - (r - x)/v;
+			this.v = -v;
+			this.x = r + dtAfterBounce*this.v;
+		} else if (x + v*dt >= L - r) {
+			// Bounce off right wall
+			dtAfterBounce = dt - (L - r - x)/v;
+			this.v = -v;
+			this.x = L-r + dtAfterBounce*this.v;
+		} else {
+			// No bounce
+			this.x = x + v*dt;
+		}
+		this.t = new Date(this.t.valueOf() + dt);
+		this.notify({x: this.x, v: this.v, dt: dt, t: this.t});
 	};
-	Balls.snapshot = function() {
-		var s = [];
-		for (var i = 0; i < this.balls.length; i++) {
-			s.append(shallowCopy(this.balls[i]));
-		});
-		return s
+
+	Ball.play = function() {
+		this.t = new Date();
+		var f = function() {
+			var tprime = new Date();
+			var dt = tprime - this.t;
+			Ball.step(dt);
+			Ball.timer = window.setTimeout(f, 10);
+		}.bind(this);
+		this.notify({x: this.x, v: this.v, dt: 0, t: this.t});
+		f();
 	};
-	Balls.removeBall = function(i) {
-		this.balls.splice(i, 1);
-		this.notify(this.snapshot());
+	Ball.pause = function() {
+		if (Ball.timer) {
+			window.clearTimeout(Ball.timer);
+			Ball.timer = null;
+		}
+		this.notify({x: this.x, v: this.v, dt: 0, t: this.t});
 	};
-	Balls.step = function() {
-		// TODO: Step the simulation
-	};
-	Balls.go = function() {
-		// TODO
-	};
-	Balls.pause = function() {
-		// TODO
-	};
+	Ball.isPlaying = function() {
+		return Ball.timer !== null;
+	}
 
 	/*
 	   We use the same two column layout that we used for the calculator as
@@ -138,20 +223,134 @@
 	};
 
 	/*
-	   Next we write the display of the bouncing balls in the left
+	   Next we write the display of the bouncing ball in the left
 	   column, along with play and pause buttons.
 	 */
+	var svgns = "http://www.w3.org/2000/svg";
+	var BallCanvas = {
+		writeOver: function(el) {
+			var svg = document.createElementNS(svgns, 'svg');
+			this.svg = svg;
 
+			var ball = document.createElementNS(svgns, 'circle');
+			this.ball = ball;
+			svg.appendChild(ball);
+			el.parentNode.replaceChild(svg, el);
+		},
+		update: function(msg) {
+			var rects = this.svg.getClientRects();
+			if (rects.length === 0) {
+				return;
+			}
+			// TODO: Use a g element with a transform to scale
+			// this instead of doing it by hand. Switch the cy, r,
+			// and height updates to not happen on each model update.
+
+			var width = rects[0].width;
+			var scale = width/Ball.trackLength;
+			var svgX = scale*msg.x;
+			this.ball.setAttributeNS(null, 'cx', scale*msg.x);
+			this.ball.setAttributeNS(null, 'cy',
+				scale*1.2*Ball.radius);
+			this.ball.setAttributeNS(null, 'r',
+				scale*Ball.radius);
+			this.svg.setAttributeNS(null, 'height',
+				scale*2.4*Ball.radius);
+		}
+	};
+	Ball.addObserver(BallCanvas);
+	TwoColumns.addLeft(BallCanvas);
+
+	var PlayPauseButton = {
+		button: null,
+		label: function() {
+			if (Ball.isPlaying()) {
+				return 'Pause';
+			} else {
+				return 'Play';
+			}
+		},
+		writeOver: function(el) {
+			var button = document.createElement('button');
+			button.textContent = this.label();
+			button.addEventListener('click', function() {
+				if (Ball.isPlaying()) {
+					Ball.pause();
+
+				} else {
+					Ball.play();
+				}
+				button.textContent = this.label();
+			});
+			this.button = button;
+			el.parentNode.replaceChild(button, el);
+		},
+		update: function() {
+			if (this.button) {
+				var label = this.label();
+				if (this.button.textContent !== label) {
+					this.button.textContent = label;
+				}
+			}
+		}
+	}
+	TwoColumns.addLeft(PlayPauseButton);
+	Ball.addObserver(PlayPauseButton);
 
 	/*
 	   In the right column, we render a table showing the coordinates
 	   of each ball, plus controls to delete a particular ball and
 	   a button to add a new ball at a random location and velocity.
 	 */
+	var BallCoordinates = {
+		writeOver: function(el) {
+			var table = document.createElement('table');
+			var tr = document.createElement('tr');
+			table.appendChild(tr);
+
+			var td = document.createElement('th');
+			td.textContent = 'Position';
+			tr.appendChild(td);
+			
+			var td = document.createElement('th');
+			td.textContent = 'Velocity';
+			tr.appendChild(td);
+
+			
+			tr = document.createElement('tr');
+			table.appendChild(tr);
+			
+			td = document.createElement('td');
+			tr.appendChild(td);
+			this.xView = td;
+
+			td = document.createElement('td');
+			tr.appendChild(td);
+			this.vView = td;
+
+			el.parentNode.replaceChild(table, el);
+		},
+		update: function(msg) {
+			if (this.xView) {
+				var txt = msg.x.toLocaleString(
+					{maximumSignificantDigits: 3});
+				this.xView.textContent = txt;
+			}
+			if (this.vView) {
+				var txt = msg.v.toLocaleString(
+					{maximumSignificantDigits: 3});
+				this.vView.textContent = txt;
+			}
+		}
+	}
+	TwoColumns.addRight(BallCoordinates);
+	Ball.addObserver(BallCoordinates);
+
+	
 
 	document.addEventListener('DOMContentLoaded', function() {
 		TwoColumns.show();
-		Ball.go();
+		Ball.play();
 	});
 	
 	</script>
