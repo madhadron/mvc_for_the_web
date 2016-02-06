@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Program 5</title>
+		<style>
+		body {
+			text-align: center;
+		}
+		div#container {
+			display: inline-block;
+			padding: 0.5em;
+			margin-top: 3em;
+			margin-bottom: 3em;
+			border: 0.1em solid #555;
+		}
+		button {
+			margin-left: 1em;
+		}
+		</style>
+	</head>
+	<body>
+	</body>
+	<script type="text/javascript">
+	"use strict";
+	/*
+	   Program 5 - Reusable views and controllers
+
+	   All the views in our previous examples have been one-offs, instantiated
+	   directly with the properties we need. In any nontrivial application there
+	   will probably be a number of such views, but there are many others, such
+	   as buttons or labels, that we expect to use many of, and we would like
+	   to reuse code for.
+
+	   To reuse such views, we factor out all the behavior particular to each
+	   instance into a separate object, which we call a controller, and provide
+	   such an object to each instance of the view.
+
+	   As a first demonstration, we will revisit the counter and increment button
+	   from program-1.html. The model is identical.
+	 */
+	var Observable = {
+		initializeObservable: function() {
+			this.observers = new Set();
+		},
+
+		addObserver: function(observer) {
+			this.observers.add(observer);
+		},
+
+		deleteObserver: function(observer) {
+			this.observers.delete(observer);
+		},
+
+		notify: function() {
+			this.observers.forEach(function(observer) {
+				observer.update();
+			});
+		}
+	};
+
+	var Counter = Object.create(Observable);
+	Counter.initializeObservable();
+	Counter.count = 0;
+	Counter.increment = function() {
+		this.count += 1;
+		this.notify();
+	};
+
+
+	/* 
+	   First, we create a root element.
+	 */
+	var Root = {
+		subviews: [],
+		add: function(subview) {
+			this.subviews.push(subview);
+		},
+		show: function() {
+			var fragment = document.createDocumentFragment();
+			var container = document.createElement('div');
+			container.setAttribute('id', 'container');
+			fragment.appendChild(container);
+			for (var i = 0; i < this.subviews.length; i++) {
+				var subEl = document.createElement('div');
+				container.appendChild(subEl);
+				this.subviews[i].writeOver(subEl);
+			}
+			document.body.appendChild(fragment);
+		}
+	};
+	   
+	
+	/*
+	   Now we create functions to generate labels and buttons, which
+	   are the two views we used. 
+
+	   The functions to create views will take two arguments: the model
+	   they should observe and the controller object. Controllers will
+	   have an initialize method that takes the view and model as
+	   arguments.
+
+	   The label requires only one method of its controller: getText to
+	   return the text to display.
+	 */
+
+	function Label(model, controller) {
+		this.model = model;
+		this.controller = controller;
+		this.controller.initialize(model, this);
+		this.model.addObserver(this);
+
+		this.writeOver = function(el) {
+			this.span = document.createElement('span');
+			this.span.textContent = this.controller.getText();
+			el.parentNode.replaceChild(this.span, el);
+		};
+
+		/*
+		   We'll continue to accept a message argument to update
+		   in case views are to be used with push models, and
+		   we will pass that message onto controller methods
+		   that we invoke.
+		 */
+		this.update = function(msg) {
+			var newText = this.controller.getText(msg);
+			if (newText !== this.span.textContent) {
+				this.span.textContent = newText;
+			}
+		};
+	}
+
+	var counterLabel = new Label(Counter, {
+		initialize: function(model, view) {
+			this.model = model;
+			this.view = view;
+		},
+		getText: function() {
+			return 'Counter: ' + this.model.count;
+		}
+	});
+	Root.add(counterLabel);
+
+
+	/*
+	   Buttons are a little more complicated.
+	 */
+	function Button(model, controller) {
+		this.model = model;
+		this.controller = controller;
+		controller.initialize(model, this);
+
+		this.writeOver = function(el) {
+			var button = document.createElement('button');
+			button.textContent = this.controller.getText();
+			button.disabled = this.controller.isDisabled ? this.controller.isDisabled() : false;
+			button.addEventListener('click', this.controller.onClick.bind(this.controller));
+			this.button = button;
+			el.parentNode.replaceChild(button, el);
+		};
+
+		this.update = function(msg) {
+			if (this.button) {
+				this.button.textContent = this.controller.getText(msg);
+				this.button.disabled = this.controller.isDisabled ? this.controller.isDisabled() : false;
+			}
+		};
+	}
+
+	var incrementButton = new Button(Counter, {
+		initialize: function(model, view) {
+			this.model = model;
+			this.view = view;
+		},
+		getText: function() {
+			return 'Increment';
+		},
+		onClick: function() {
+			this.model.increment();
+		}
+	});
+	Root.add(incrementButton);
+	
+
+	document.addEventListener('DOMContentLoaded', function() {
+		Root.show();
+	});
+	</script>
+</html>
