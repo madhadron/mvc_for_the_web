@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Program 3</title>
+		<style>
+		body {
+			line-height: 1.2em;
+		}
+		.col-group > div {
+			padding: 0;
+			margin: 0;
+			margin-bottom: 1em;
+		}
+
+		@media screen and (min-width: 44em) {
+			.col-group {
+				overflow: hidden;
+			}
+
+			.col-group > div {
+				float: left;
+				width: 50%;
+			}
+
+
+		}
+
+		.entry {
+			text-align: center;
+			border: 0.1em solid #aaa;
+			padding-top: 1.8em;
+			padding-bottom: 1.4em;
+			padding-left: 1em;
+			padding-right: 1em;
+			margin-bottom: 0.5em;
+		}
+		.entry > button.clear {
+			width: 7rem;
+		}
+		.entry > button.push {
+			width: 7rem;
+		}
+		.entry > span {
+			display: inline-block;
+			width: calc(50vw - 16.7rem);
+		}
+
+		.keypad > button {
+			width: 25%;
+			height: 4em;
+		}
+		.keypad > button.zero {
+			width: 50%;
+		}
+		
+		ul.stack {
+			border: 0.1em solid #aaa;
+			margin: 0 0.4em;
+			min-height: 12.2em;
+			overflow-y: auto;
+			padding-top: 0.9em;
+		}
+		
+		ul.stack > li {
+			display: block;
+			margin: 0;
+			padding: 0;
+			margin-top: 0.8em;
+		}
+
+		button.drop {
+			width: 98%;
+			height: 4em;
+			margin-left: 0.6em;
+			margin-right: 1em;
+		}
+		</style>
+	</head>
+	<body>
+	</body>
+	<script type="text/javascript">
+	/*
+	   Program 3 - More reusable views and controllers
+
+	   The views in the previous example both appeared only once, so there
+	   was nothing to be gained by making them reusable. To see actual gains,
+	   we need to build a more complicated interface, so we will redo the
+	   four function calculator with reusable views.
+
+	   All the model code is identical to program-3.html.
+	 */
+	var Observable = {
+		initializeObservable: function() {
+			this.observers = new Set();
+		},
+
+		addObserver: function(observer) {
+			this.observers.add(observer);
+		},
+
+		deleteObserver: function(observer) {
+			this.observers.delete(observer);
+		},
+
+		notify: function() {
+			this.observers.forEach(function(observer) {
+				observer.update();
+			});
+		}
+	};
+
+	function EmptyEntry() {
+		this.wholeDigits = [];
+		this.fractionalDigits = [];
+		this.negative = false;
+		this.enteringFractional = false;
+	};
+	
+	var RPNStack = Object.create(Observable);
+	RPNStack.initializeObservable();
+	RPNStack.stack = [];
+	RPNStack.error = null;
+	RPNStack.entry = new EmptyEntry();
+	RPNStack.push = function(x) {
+		this.stack.push(x);
+		this.notify();
+	};
+	RPNStack.pop = function() {
+		this.stack.pop();
+		this.notify();
+	};
+	RPNStack.add = function() {
+		if (this.stack.length < 2) {
+			this.error = '+ requires at least two numbers on the stack.';
+		} else {
+			var x = this.stack.pop();
+			var y = this.stack.pop();
+			this.stack.push(x+y);
+		}
+		this.notify();
+	};
+	RPNStack.subtract = function() {
+		if (this.stack.length < 2) {
+			this.error = '- requires at least two numbers on the stack.';
+		} else {
+			var x = this.stack.pop();
+			var y = this.stack.pop();
+			this.stack.push(y - x);
+		}
+		this.notify();
+	};
+	RPNStack.multiply = function() {
+		if (this.stack.length < 2) {
+			this.error = '* requires at least two numbers on the stack.';
+		} else {
+			var x = this.stack.pop();
+			var y = this.stack.pop();
+			this.stack.push(x*y);
+		}
+		this.notify();
+	};
+	RPNStack.divide = function() {
+		if (this.stack.length < 2) {
+			this.error = '/ requires at least two numbers on the stack.';
+		} else {
+			var x = this.stack.pop();
+			var y = this.stack.pop();
+			this.stack.push(y/x);
+		}
+		this.notify();
+	};
+	RPNStack.pushDigit = function(digit) {
+		if (digit < 0 || digit > 9) {
+			this.error = 'Invalid digit: ' + digit;
+		} else if (this.entry.enteringFractional) {
+			this.entry.fractionalDigits.push(digit)
+		} else {
+			this.entry.wholeDigits.push(digit);
+		}
+		this.notify();
+	};
+	RPNStack.toggleSign = function() {
+		this.entry.negative = !this.entry.negative;
+		this.notify();
+	};
+	RPNStack.startFractional = function() {
+		this.entry.enteringFractional = true;
+		this.notify();
+	};
+	RPNStack.clearDigits = function() {
+		this.entry = new EmptyEntry();
+		this.notify();
+	};
+	RPNStack.getFormattedEntry = function() {
+		var s = '';
+		if (this.entry.negative) {
+			s += '-';
+		}
+		if (this.entry.wholeDigits.length > 0) {
+			s += this.entry.wholeDigits.join('');
+		} else {
+			s += '0';
+		}
+		if (this.entry.fractionalDigits.length > 0) {
+			s += '.' + this.entry.fractionalDigits.join('');
+		}
+		return s;
+	};
+	RPNStack.pushEntry = function() {
+		if (this.entry.wholeDigits.length === 0 && this.entry.fractionalDigits === 0) {
+			return;
+		}
+		var s = 0;
+		var pow = 0.1;
+		for (var i = 0; i < this.entry.fractionalDigits.length; i++) {
+			s += this.entry.fractionalDigits[i] * pow;
+			pow *= 0.1;
+		}
+		var pow = 1;
+		for (var i = this.entry.wholeDigits.length - 1; i >= 0; i--) {
+			s += this.entry.wholeDigits[i] * pow;
+			pow *= 10;
+		}
+		if (this.entry.negative) {
+			s *= -1;
+		}
+		this.stack.push(s);
+		this.entry = new EmptyEntry();
+		this.notify();
+	};
+
+	/*
+	   We use the same two column layout.
+	 */
+	var TwoColumns = {
+		leftSubviews: [],
+		rightSubviews: [],
+		show: function() {
+			var fragment = document.createDocumentFragment();
+			var div = document.createElement('div');
+			div.setAttribute('class', 'col-group');
+			fragment.appendChild(div);
+
+			var leftDiv = document.createElement('div');
+			this.leftSubviews.forEach(function(subview) {
+				var el = document.createElement('div');
+				leftDiv.appendChild(el);
+				subview.writeOver(el);
+			}, this);
+			div.appendChild(leftDiv);
+
+			var rightDiv = document.createElement('div');
+			this.rightSubviews.forEach(function(subview) {
+				var el = document.createElement('div');
+				rightDiv.appendChild(el);
+				subview.writeOver(el);
+			}, this);
+			div.appendChild(rightDiv);
+
+			document.body.appendChild(fragment);
+		},
+		addLeft: function(view) {
+			this.leftSubviews.push(view);
+		},
+		addRight: function(view) {
+			this.rightSubviews.push(view);
+		}
+	};
+
+	/* 
+	   Our view consists only of buttons and labels, just like the previous
+	   example, so we reuse its code for those two things. We still organize
+	   them into the same one-off views as before---entry, keypad, stack,
+	   and drop button---but the code becomes a little less repetitive.
+
+	   We copy the Label and Button from the previous example.
+	 */
+	function Label(model, controller) {
+		this.model = model;
+		this.controller = controller;
+		this.controller.initialize(model, this);
+		this.model.addObserver(this);
+
+		this.writeOver = function(el) {
+			this.span = document.createElement('span');
+			this.span.textContent = this.controller.getText();
+			if (this.controller.getClass) {
+				this.span.setAttribute('class', this.controller.getClass());
+			}
+			el.parentNode.replaceChild(this.span, el);
+		};
+
+		this.update = function(msg) {
+			var newText = this.controller.getText(msg);
+			if (newText !== this.span.textContent) {
+				this.span.textContent = newText;
+			}
+			if (this.controller.getClass &&
+				this.controller.getClass(msg) !== this.span.getAttribute('class')) {
+					this.span.setAttribute('class', this.controller.getClass(msg));
+			}
+			
+		};
+	}
+
+	function Button(model, controller) {
+		this.model = model;
+		this.controller = controller;
+		controller.initialize(model, this);
+		this.model.addObserver(this);
+
+		this.writeOver = function(el) {
+			var button = document.createElement('button');
+			button.textContent = this.controller.getText();
+			if (this.controller.getClass) {
+				button.setAttribute(
+					'class',
+					this.controller.getClass()
+				);
+			}
+			if (this.controller.isEnabled) {
+				button.disabled = !this.controller.isEnabled();
+			}
+			button.addEventListener(
+				'click',
+				this.controller.onClick.bind(this.controller)
+			);
+			this.button = button;
+			el.parentNode.replaceChild(button, el);
+		};
+
+		this.update = function(msg) {
+			if (this.button) {
+				this.button.textContent = this.controller.getText(msg);
+				if (this.controller.isEnabled) {
+					this.button.disabled = !this.controller.isEnabled();
+				}
+			}
+		};
+	}
+
+	/*
+	   The Entry view consists of two buttons and a label. Since each of
+	   the component views handles its own updates, the Entry no longer
+	   needs to observe the model. For more complicated compound views that
+	   actually have state among them, this will not be true. We will
+	   such views in the next example.
+
+	   However, to simplify adding subviews, we factor out a Container
+	   prototype that entry, keypad, and the rest will delegate to.
+	 */
+	var Container = {
+		initializeSubviews: function() {
+			this.subviews = [];
+		},
+		addSubview: function(subview) {
+			this.subviews.push(subview);
+		},
+		writeSubviewsIn: function(el) {
+			for (var i = 0; i < this.subviews.length; i++) {
+				var subEl = document.createElement('div');
+				el.appendChild(subEl);
+				this.subviews[i].writeOver(subEl);
+			}
+		}
+	};
+
+	var Entry = Object.create(Container);
+	Entry.writeOver = function(el) {
+		this.initializeSubviews();
+
+		this.addSubview(new Button(RPNStack, {
+			initialize: function(model, view) {
+					this.model = model;
+			},
+			getText: function() { return 'Clear'; },
+			getClass: function() { return 'clear'; },
+			onClick: function() { this.model.clearDigits(); }
+		}));
+			
+		this.addSubview(new Label(RPNStack, {
+			initialize: function(model, view) {
+				this.model = model;
+			},
+			getText: function() {
+				return this.model.getFormattedEntry();
+			}
+		}));
+
+		this.addSubview(new Button(RPNStack, {
+			initialize: function(model, view) {
+				this.model = model;
+			},
+			getText: function() { return 'Push >>'; },
+			getClass: function() { return 'push'; },
+			onClick: function() {
+				this.model.pushEntry();
+			}
+		}));
+
+		var newEl = document.createElement('div');
+		newEl.setAttribute('class', 'entry');
+		this.writeSubviewsIn(newEl);
+		
+		el.parentNode.replaceChild(newEl, el);
+	};
+	TwoColumns.addLeft(Entry);
+
+	/*
+	   The Keypad, like the entry, has no state to itself, just a list
+	   of buttons, so we only have to provide a list of controllers and
+	   generate a button for each of them. There are two kinds of buttons,
+	   ones for entering a digit and ones for running an operation,
+	   so we create functions to create each of the two kinds of controller.
+	 */
+
+	function digitController(digit) {
+		return {
+			initialize: function(model, view) {
+				this.model = model;
+			},
+			getText: function() {
+				return '' + digit;
+			},
+			onClick: function() {
+				this.model.pushDigit(digit);
+			}
+		};
+	}
+	function opController(op, method) {
+		return {
+			initialize: function(model, view) {
+				return this.model = model;
+			},
+			getText: function() {
+				return op;
+			},
+			onClick: function() {
+				this.model[method]();
+			},
+			isEnabled: function() {
+				return this.model.stack.length >= 2;
+			}
+		};
+	}
+
+	var Keypad = Object.create(Container);
+	Keypad.writeOver = function(el) {
+		this.initializeSubviews();
+		
+		var div = document.createElement('div');
+		div.setAttribute('class', 'keypad');
+		
+		var controllers = [
+			digitController(7),
+			digitController(8),
+			digitController(9),
+			opController('+', 'add'),
+			
+			digitController(4),
+			digitController(5),
+			digitController(6),
+			opController('*', 'multiply'),
+			
+			digitController(1),
+			digitController(2),
+			digitController(3),
+			digitController('-', 'subtract'),
+			
+			// Zero is a special case, since it needs
+			// a class, so we build its controller
+			// manually.
+			{
+				initialize: function(model, view) {
+					this.model = model;
+				},
+				getText: function() {
+					return '0';
+				},
+				onClick: function() {
+					this.model.pushDigit(0);
+				},
+				getClass: function() {
+					return 'zero';
+				}
+			},
+
+			opController('.', 'startFractional'),
+			opController('/', 'divide'),
+		];
+
+		for (var i = 0; i < controllers.length; i++) {
+			this.addSubview(new Button(
+				RPNStack,
+				controllers[i]
+			));
+		}
+		this.writeSubviewsIn(div);
+		el.parentNode.replaceChild(div, el);
+	};
+	TwoColumns.addLeft(Keypad);
+	
+	/*
+	   The stack itself is more complicated, since it has a varying number
+	   of subviews. For now we will leave it as it is, and return to 
+	   making a reusable component out of it in a later example.
+	 */
+	var StackView = {
+		writeOver: function(el) {
+			var ul = document.createElement('ul');
+			ul.setAttribute('class', 'stack');
+			var li;
+			for (var i = 0; i < RPNStack.stack.length; i++) {
+				li = document.createElement('li');
+				li.textContent = RPNStack.stack[i];
+				ul.appendChild(li);
+			}
+			if (RPNStack.stack.length === 0) {
+				li = document.createElement('li');
+				var em = document.createElement('em');
+				em.textContent = '(Empty stack)';
+				li.appendChild(em);
+				ul.appendChild(li);
+			}
+
+			this.el = ul;
+			el.parentNode.replaceChild(ul, el);
+		},
+		update: function() {
+			if (this.el) {
+				this.writeOver(this.el);
+			}
+		}
+	};
+	RPNStack.addObserver(StackView);
+	TwoColumns.addRight(StackView);
+
+	var dropButton = new Button(RPNStack, {
+		initialize: function(model) {
+			this.model = model;
+		},
+		getText: function() {
+			return 'Drop';
+		},
+		getClass: function() {
+			return 'drop';
+		},
+		onClick: function() {
+			this.model.pop();
+		}
+	});
+	TwoColumns.addRight(dropButton);
+		
+	
+	document.addEventListener('DOMContentLoaded', function() {
+		TwoColumns.show();
+	});
+	</script>
+</html>

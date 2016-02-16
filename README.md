@@ -22,21 +22,28 @@ The code depends on conservative choices of technology. The JavaScript is all EC
 * Program 1 - Views
 * Program 2 - View trees
 * Program 3 - Deeper view trees
-
-Material still to be written:
 * Program 4 - Push protocols in models
 * Program 5 - Reusable views and controllers
 * Program 6 - More reusable views and controllers
-* Program 6 - Composite views
-* Program 7 - Releasing views
 
-Further material I plan to cover:
-* Small multiples, sorting and filtering
-* Interacting with remote servers: lazily loading data, and asynchronously writing data
-* Form validation
-* Working with the browser URL
+Material still to be written:
+* Composite views
+* Manipulating the URL - Tabs
+* Releasing views - Wizards
+* Small multiples - Lists
+* Sorting and filtering small multiples - Tables
+* Loading and syncing to remote models
+* Lazily loading data
+* Drop and drop
 * Undo/redo
-* Layout managers in SVG and Canvas
+* Pluralization
+
+Technologies that I wish were ready, but aren't broadly enough supported:
+* HTML5 context menus
+* Flexboxes
+* Grid layout
+* Internationalization API (ECMA 402)
+* ECMAScript 6 modules
 
 ## License
 

@@ -68,7 +68,8 @@
 
 
 	/* 
-	   First, we create a root element.
+	   And we still need a root element to contain the rest of
+	   the interface.
 	 */
 	var Root = {
 		subviews: [],
@@ -92,15 +93,30 @@
 	
 	/*
 	   Now we create functions to generate labels and buttons, which
-	   are the two views we used. 
+	   are the two views we use. The functions take a model and a controller
+	   as arguments.
 
-	   The functions to create views will take two arguments: the model
-	   they should observe and the controller object. Controllers will
-	   have an initialize method that takes the view and model as
-	   arguments.
+	   For a controller to be useful, it must obey a specific protocol
+	   defined by the view, and the view must make all accesses to
+	   the model via its controller. We will say that everyone controller
+	   protocol has an initialize function that takes the model and a reference
+	   to the view. Then each view must document what protocol it requires
+	   from its controllers.
 
-	   The label requires only one method of its controller: getText to
-	   return the text to display.
+	   We start with the label, which is simpler. Its controller protocol has
+	   only three methods:
+
+	   - initialize(model, view): Called by the view to set up the 
+	     controller.
+	   - getText(msg): msg will be any value sent to the update method by a
+	     model that pushes state, and may or may not be present. The method
+	     returns the text that should be set to the textContent field of
+	     the label.
+	   - getClass(msg): (optional) msg is the same as for text. Returns a string
+	     to set as the class of the span element in the label, or null if
+	     there should be not class set.
+	     
+	   Then the code for the label function is
 	 */
 
 	function Label(model, controller) {
@@ -112,23 +128,35 @@
 		this.writeOver = function(el) {
 			this.span = document.createElement('span');
 			this.span.textContent = this.controller.getText();
+			if (this.controller.getClass) {
+				this.span.setAttribute('class', this.controller.getClass());
+			}
 			el.parentNode.replaceChild(this.span, el);
 		};
 
-		/*
-		   We'll continue to accept a message argument to update
-		   in case views are to be used with push models, and
-		   we will pass that message onto controller methods
-		   that we invoke.
-		 */
 		this.update = function(msg) {
+			/*
+			   We don't want to do anything to the DOM if there are no
+			   changes needed, nor do we want users to lose whatever
+			   text they may have selected.
+			 */
+			
 			var newText = this.controller.getText(msg);
 			if (newText !== this.span.textContent) {
 				this.span.textContent = newText;
 			}
+			if (this.controller.getClass &&
+				this.controller.getClass(msg) !== this.span.getAttribute('class')) {
+				this.span.setAttribute('class', this.controller.getClass(msg));
+			}
+				
 		};
 	}
 
+	/*
+	   To use the Label, we provide a model and a controller to the Label
+	   function, then add the resulting view to the Root view.
+	*/
 	var counterLabel = new Label(Counter, {
 		initialize: function(model, view) {
 			this.model = model;
@@ -142,18 +170,32 @@
 
 
 	/*
-	   Buttons are a little more complicated.
+	   Buttons are a little more complicated. Their protocol is potentially very
+	   complicated. In this case we're only going to provide a text label, whether
+	   the button is enabled, and what to do when it is clicked. The protocol is
+
+	   - initialize(model, view): Initialize the controller.
+	   - getText(msg): Return the text to display on the button.
+	   - isEnabled(msg): (optional) Return a boolean saying if this button 
+	     is enabled or disabled. If omitted, the button is always enabled.
+	   - onClicked(): Invoked when the button is clicked.
 	 */
 	function Button(model, controller) {
 		this.model = model;
 		this.controller = controller;
 		controller.initialize(model, this);
+		this.model.addObserver(this);
 
 		this.writeOver = function(el) {
 			var button = document.createElement('button');
 			button.textContent = this.controller.getText();
-			button.disabled = this.controller.isDisabled ? this.controller.isDisabled() : false;
-			button.addEventListener('click', this.controller.onClick.bind(this.controller));
+			if (this.controller.isEnabled) {
+				button.disabled = !this.controller.isEnabled();
+			}
+			button.addEventListener(
+				'click',
+				this.controller.onClick.bind(this.controller)
+			);
 			this.button = button;
 			el.parentNode.replaceChild(button, el);
 		};
@@ -161,11 +203,16 @@
 		this.update = function(msg) {
 			if (this.button) {
 				this.button.textContent = this.controller.getText(msg);
-				this.button.disabled = this.controller.isDisabled ? this.controller.isDisabled() : false;
+				if (this.controller.isEnabled) {
+					this.button.disabled = !this.controller.isEnabled();
+				}
 			}
 		};
 	}
 
+	/*
+	   And we use it thus:
+	*/
 	var incrementButton = new Button(Counter, {
 		initialize: function(model, view) {
 			this.model = model;

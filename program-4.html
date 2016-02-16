@@ -100,25 +100,6 @@
 		}
 	};
 
-	function randomCoordinates() {
-		var v = Object.create(null);
-		v.x = null;
-		v.y = null;
-		v.vx = null;
-		v.vy = null;
-		return v
-	}
-
-	function shallowCopy(obj) {
-		var newObj = Object.create(obj.__proto__);
-		for (var k in obj) {
-			if (obj.hasOwnProperty(k)) {
-				newObj[k] = obj[k];
-			}
-		}
-		return newObj;
-	}
-
 	/*
 	   Our model's state will consist of the coordinates and
 	   velocities of the ball, its radius, and the time at which those
