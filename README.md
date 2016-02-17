@@ -25,9 +25,9 @@ The code depends on conservative choices of technology. The JavaScript is all EC
 * Program 4 - Push protocols in models
 * Program 5 - Reusable views and controllers
 * Program 6 - More reusable views and controllers
+* Program 7 - Composite views
 
 Material still to be written:
-* Composite views
 * Manipulating the URL - Tabs
 * Releasing views - Wizards
 * Small multiples - Lists

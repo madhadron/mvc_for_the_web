@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Program 7</title>
+		<style>
+		.col-group > div {
+			padding: 0;
+			margin: 0;
+			margin-bottom: 1em;
+		}
+
+		@media screen and (min-width: 44em) {
+			.col-group {
+				overflow: hidden;
+			}
+
+			.col-group > div {
+				float: left;
+				width: 50%;
+			}
+
+
+		}
+
+		input.invalid {
+			border: 1px solid red;
+		}
+		</style>
+	</head>
+	<body>
+	</body>
+	<script type="text/javascript">
+	"use strict";
+	/*
+	   Program 7 - Composite views
+
+	   We have demonstrated several of the techniques that constitute
+	   Model-View-Controller:
+
+	   - All changing state is normalized in one place, the model, and all
+	     views observe it to be notified of changes in state.
+	   - Views are organized in trees.
+	   - Views are reused by providing the particular behavior for a given
+	     instance of a view in an object called a controller.
+
+	   Now we come to the next principle, that of creating composite views.
+	   I think it is best motivated by this quote from Structure and 
+	   Interpretation of Computer Programs:
+
+	       "...when we describe a language, we should pay particular 
+	       attention to the means that the language provides for combining
+	       simple ideas to form more complex ideas. Every powerful language 
+	       has three mechanisms for accomplishing this:
+
+	       - primitive expressions, which represent the simplest entities 
+	         the language is concerned with,
+	       - means of combination, by which compound elements are built
+	         from simpler ones, and
+   	       - means of abstraction, by which compound elements can be named 
+	         and manipulated as units."
+
+	   Organizing views into trees takes care of composition, but we want
+	   to be able to create composite views that we can use as though they
+	   were as atomic as buttons or labels.
+
+	   For our example we are going to create a input field for numbers
+	   along with increment and decrement buttons, and hook up several
+	   of them to different fields of the model.
+	 */
+	var _Observable = {
+		initializeObservable: function() {
+			this.observers = new Set();
+		},
+
+		addObserver: function(observer) {
+			this.observers.add(observer);
+		},
+
+		deleteObserver: function(observer) {
+			this.observers.delete(observer);
+		},
+
+		notify: function() {
+			this.observers.forEach(function(observer) {
+				observer.update();
+			});
+		}
+	};
+	function Observable() {
+		this.observers = new Set();
+	};
+	Observable.prototype = _Observable;
+
+	var Model = new Observable();
+	Model.red = 0;
+	Model.green = 0;
+	Model.blue = 0;
+	Model.setRed = function(n) {
+		this.red = n;
+		this.notify();
+	};
+	Model.setBlue = function(n) {
+		this.blue = n;
+		this.notify();
+	};
+	Model.setGreen = function(n) {
+		this.green = n;
+		this.notify();
+	};
+
+
+	/*
+	   We use the same two column layout we have used before.
+	 */
+	var TwoColumns = {
+		leftSubviews: [],
+		rightSubviews: [],
+		show: function() {
+			var fragment = document.createDocumentFragment();
+			var div = document.createElement('div');
+			div.setAttribute('class', 'col-group');
+			fragment.appendChild(div);
+
+			var leftDiv = document.createElement('div');
+			this.leftSubviews.forEach(function(subview) {
+				var el = document.createElement('div');
+				leftDiv.appendChild(el);
+				subview.writeOver(el);
+			}, this);
+			div.appendChild(leftDiv);
+
+			var rightDiv = document.createElement('div');
+			this.rightSubviews.forEach(function(subview) {
+				var el = document.createElement('div');
+				rightDiv.appendChild(el);
+				subview.writeOver(el);
+			}, this);
+			div.appendChild(rightDiv);
+
+			document.body.appendChild(fragment);
+		},
+		addLeft: function(view) {
+			this.leftSubviews.push(view);
+		},
+		addRight: function(view) {
+			this.rightSubviews.push(view);
+		}
+	};
+
+	/* 
+	   In the right column we will have labels showing the counts of each
+	   of the three colors.
+	 */
+	var CountTable = {
+		writeOver: function(el) {
+			var table = document.createElement('table');
+			var row, cell;
+			
+			var colors = ['red', 'green', 'blue'];
+			for (var i = 0; i < colors.length; i++) {
+				row = document.createElement('tr');
+				table.appendChild(row);
+				
+				cell = document.createElement('td');
+				cell.textContent = colors[i];
+				row.appendChild(cell);
+
+				cell = document.createElement('td');
+				cell.textContent = Model[colors[i]];
+				row.appendChild(cell);
+				this[colors[i] + 'Cell'] = cell;
+			}
+			
+			el.parentNode.replaceChild(table, el);
+			
+		},
+		update: function() {
+			if (this.redCell) {
+				this.redCell.textContent = Model.red;
+			}
+			if (this.blueCell) {
+				this.blueCell.textContent = Model.blue;
+			}
+			if (this.greenCell) {
+				this.greenCell.textContent = Model.green;
+			}
+		}
+	};
+	Model.addObserver(CountTable);
+	TwoColumns.addRight(CountTable);
+	
+	/*
+	   Now we will build our compound widget and put it in the left
+	   column. To motivate the need for an actual compound widget,
+	   we will also allow constraints on the values the widget will
+	   set, which will force us to handle disabling buttons and 
+	   rejecting inputs the user has made in a text field.
+
+	   The controller protocol is
+
+	   - getValue() -> integer: Returns the value to display from the model.
+	   - setValue(n): Sets a valid value from this view on the model.
+	   - range: (optional) a two element array of numbers, [a,b], specifying
+	     that the number N in the picker will always satisfy a <= N < b.
+	     If omitted, there is no restriction on range.
+
+	   We will build the view from an input box and two buttons. We reuse
+	   the button view that we already built.
+	 */
+
+
+	function Button(model, controller) {
+		this.model = model;
+		this.controller = controller;
+		controller.initialize(model, this);
+		this.model.addObserver(this);
+
+		this.writeOver = function(el) {
+			var button = document.createElement('button');
+			button.textContent = this.controller.getText();
+			if (this.controller.getClass) {
+				button.setAttribute(
+					'class',
+					this.controller.getClass()
+				);
+			}
+			if (this.controller.isEnabled) {
+				button.disabled = !this.controller.isEnabled();
+			}
+			button.addEventListener(
+				'click',
+				this.controller.onClick.bind(this.controller)
+			);
+			this.button = button;
+			el.parentNode.replaceChild(button, el);
+		};
+
+		this.update = function(msg) {
+			if (this.button) {
+				this.button.textContent = this.controller.getText(msg);
+				if (this.controller.isEnabled) {
+					this.button.disabled = !this.controller.isEnabled();
+				}
+			}
+		};
+	}
+
+	/*
+	   And now we create a text box view. Its controller protocol is
+	   
+	   - isValid(s): (optional) Called when the contents of the text
+   	     box change. If it returns true, onChanged(s) is called on the
+	     controller. If it returns false, the text box's border turns
+	     red.
+	   - onChanged(s): Called when a valid value has been put in the
+	     text box.
+	   - onCleared(): (optional) Called when all the text in the text box has
+	     been deleted.
+	   - getPlaceholder(): (optional) Called to get a placeholder value 
+	     for an empty text box.
+	   - getValue(): Returns the value that should be set in this
+	     text box.
+	   - getClass(): (optional) Returns a class to set on the element.
+	 */
+	function TextBox(model, controller) {
+		this.model = model;
+		this.controller = controller;
+		controller.initialize(model, this);
+		this.model.addObserver(this);
+
+		this.writeOver = function(el) {
+			this.input = document.createElement('input');
+			this.input.setAttribute('type', 'text');
+			if (this.controller.getClass) {
+				this.input.setAttribute(
+					'class', this.controller.getClass()
+				);
+			}
+			if (this.controller.getPlaceholder) {
+				this.input.setAttribute(
+					'placeholder', this.controller.getPlaceholder()
+				);
+			}
+			this.input.setAttribute('value', this.controller.getValue());
+			this.input.addEventListener('change', function() {
+				var s = this.input.value;
+				if (s === '') {
+					this.input.setAttribute(
+						'placeholder',
+						this.controller.getPlaceholder()
+					);
+					if (this.controller.onCleared) {
+						this.controller.onCleared();
+					}
+				} else if (this.controller.isValid && !this.controller.isValid(s)) {
+					this.input.classList.add('invalid');
+				} else {
+					this.input.classList.remove('invalid');
+					this.controller.onChanged(s);
+				}
+			}.bind(this));
+			el.parentNode.replaceChild(this.input, el);
+
+		};
+		this.update = function() {
+			if (this.input) {
+				this.input.value = this.controller.getValue();
+				if (!this.controller.isValid) {
+					return;
+				} else if (this.controller.isValid(this.input.value)) {
+					this.input.classList.remove('invalid');
+				} else {
+					this.input.classList.add('invalid');
+				}
+			}
+		};
+	}
+	
+
+	/*
+	   Finally, we construct our NumberPicker. We use the same pattern
+	   of creating temporary divs and having the subviews write over
+	   themselves that we have for our containers before, but now we
+	   provide controllers to each subview to hook them up to the controller
+	   provided to the NumberPicker.
+
+	   In this case we don't need a model for the NumberPicker itself,
+	   but some composite views may have to have an internal model.
+	 */
+	function NumberPicker(model, controller) {
+		this.model = model;
+		controller.initialize(model, this);
+		this.writeOver = function(el) {
+			this.textBox = new TextBox(model, {
+				initialize: function(model) {
+					this.model = model
+				},
+				isValid: function(s) {
+					var r = /\s*[0-9]+\s*/;
+					if (!r.test(s)) {
+						return false;
+					}
+					if (controller.range) {
+						var n = parseInt(s);
+						if (n < controller.range[0] || n >= controller.range[1]) {
+							return false;
+						}
+					}
+					return true;
+				},
+				onChanged: function(s) {
+					controller.setValue(parseInt(s))
+				},
+				getPlaceholder: function() {
+					return '(Integer)';
+				},
+				getValue: function() {
+					return controller.getValue();
+				}
+			});
+			this.decrementButton = new Button(model, {
+				initialize: function(model) {
+					this.model = model;
+				},
+				getText: function() {
+					return '--';
+				},
+				onClick: function() {
+					controller.setValue(controller.getValue()-1);
+				},
+				isEnabled: function() {
+					if (controller.range) {
+						var v = controller.getValue();
+						return v > controller.range[0];
+
+					} else {
+						return true;
+					}
+				}
+			});
+			this.incrementButton = new Button(model, {
+				initialize: function(model) {
+					this.model = model;
+				},
+				getText: function() {
+					return '++';
+				},
+				onClick: function() {
+					controller.setValue(controller.getValue()+1);
+				},
+				isEnabled: function() {
+					if (controller.range) {
+						var v = controller.getValue();
+						return v < controller.range[1]-1;
+					} else {
+						return true;
+					}
+				}
+			});
+
+			var span = document.createElement('div');
+			var views = [this.textBox,
+				this.decrementButton,
+				this.incrementButton];
+			views.forEach(function(subview) {
+				var subEl = document.createElement('div');
+				span.appendChild(subEl);
+				subview.writeOver(subEl);	
+			});
+			el.parentNode.replaceChild(span, el);
+		};
+		this.update = function() {
+			if (this.textBox) {
+				this.textBox.update();
+				this.decrementButton.update();
+				this.incrementButton.update();
+			}
+		};
+	}
+	TwoColumns.addLeft(new NumberPicker(Model, {
+		initialize: function(model, view) {
+			this.model = model;
+		},
+		getValue: function() {
+			return this.model.red;
+		},
+		setValue: function(n) {
+			this.model.setRed(n);
+		},
+		range: [0, 10]
+	}));
+	TwoColumns.addLeft(new NumberPicker(Model, {
+		initialize: function(model) {
+			this.model = model;
+		},
+		getValue: function() {
+			return this.model.green;
+		},
+		setValue: function(n) {
+			this.model.setGreen(n);
+		},
+		range: [-5, 5]
+	}));
+	TwoColumns.addLeft(new NumberPicker(Model, {
+		initialize: function(model) {
+			this.model = model;
+		},
+		getValue: function() {
+			return this.model.blue;
+		},
+		setValue: function(n) {
+			this.model.setBlue(n);
+		},
+		range: [0, 20]
+	}));
+	
+
+	document.addEventListener('DOMContentLoaded', function() {
+		TwoColumns.show();
+	});
+	</script>
+</html>
