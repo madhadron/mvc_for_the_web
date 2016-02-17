@@ -26,12 +26,13 @@ The code depends on conservative choices of technology. The JavaScript is all EC
 * Program 5 - Reusable views and controllers
 * Program 6 - More reusable views and controllers
 * Program 7 - Composite views
+* Program 8 - Manipulating the URL
 
 Material still to be written:
-* Manipulating the URL - Tabs
 * Releasing views - Wizards
 * Small multiples - Lists
 * Sorting and filtering small multiples - Tables
+* Tabs again as small multiples
 * Loading and syncing to remote models
 * Lazily loading data
 * Drop and drop

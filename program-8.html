@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Program 8</title>
+		<style>
+		ul.tablist {
+			display: block;
+			margin-bottom: 0;
+		}
+		ul.tablist li {
+			display: inline-block;
+			padding: 0.5em 2em;
+			border: 1px solid #333;
+			border-bottom: 0;
+			border-top-left-radius: 0.4em;
+			border-top-right-radius: 0.4em;
+			
+		}
+		li.selected {
+			color: #fff;
+			background: #333;
+		}
+		div.unselectedbody {
+			display: none;
+		}
+		div.selectedbody {
+			display: block;
+			border: 1px solid #aaa;
+			margin-top: 0;
+			padding: 3em;
+		}
+		</style>
+	</head>
+	<body>
+	</body>
+	<script type="text/javascript">
+	"use strict";
+	/*
+	   Program 8 - Manipulating the URL
+
+	   Developing in the browser means that there are several hooks
+	   that are absent in desktop apps. The most visible is the URL
+	   of the website. Ideally, the URL should change as the user
+	   interacts with the page so she can bookmark her work and return
+	   to something very close to it later with that bookmark.
+
+	   In our case we will create three tabs, and encode which tab
+	   is presently selected in the search of the URL. Again, all
+	   state will live in the model, we will create an 'invisible'
+	   view that handles the interaction with the URL. We will see
+	   more such invisible views in later examples.
+
+	   Introducing the URL causes a strange change of flow. Ideally
+	   when a user clicks on something that will change the URL, it
+	   should be a real hyperlink so actions like opening in a new
+	   tab work correctly. This means that any view that changes the
+	   URL state should do so rather than making changes to the
+	   model, and rely on the URL view to propogate those changes
+	   to the model and thence to the rest of the interface.
+
+	   Of course, we begin with our Observable, and a model, which
+	   in this case contains only an index saying which tab should be
+	   visible.
+	 */
+	var _Observable = {
+		initializeObservable: function() {
+			this.observers = new Set();
+		},
+
+		addObserver: function(observer) {
+			this.observers.add(observer);
+		},
+
+		deleteObserver: function(observer) {
+			this.observers.delete(observer);
+		},
+
+		notify: function() {
+			this.observers.forEach(function(observer) {
+				observer.update();
+			});
+		}
+	};
+	function Observable() {
+		this.observers = new Set();
+	};
+	Observable.prototype = _Observable;
+
+	var Model = new Observable();
+	Model.currentTab = 0;
+	Model.selectTab = function(tab) {
+		this.currentTab = tab;
+		this.notify();
+	};
+
+	/*
+	   As usual, we need a root view to contain our others.
+	 */
+	var Body = {
+		subviews: new Set(),
+		addSubview: function(subview) {
+			this.subviews.add(subview);
+		},
+		show: function() {
+			var fragment = document.createDocumentFragment();
+			var div = document.createElement('div');
+			fragment.appendChild(div);
+			this.subviews.forEach(function(subview) {
+				var el = document.createElement('div');
+				div.appendChild(el);
+				subview.writeOver(el);
+			}, this);
+			document.body.appendChild(fragment);
+		}
+	};
+
+	/*
+	   Our tabs consist of a ul element representing the tabs and a set of 
+	   divs representing the tab bodies.
+	 */
+	var TabList = {
+		tabs: ['First', 'Second', 'Third'],
+		writeOver: function(el) {
+			var currentTab = Model.currentTab;
+			this.ul = document.createElement('ul');
+			this.ul.setAttribute('class', 'tablist');
+			var a;
+			var li;
+			this.lis = [];
+			this.tabs.forEach(function(tab, i) {
+				a = document.createElement('a');
+				a.setAttribute('href', '?tab=' + i);
+				li = document.createElement('li');
+				li.textContent = this.tabs[i];
+				if (currentTab === i) {
+					li.classList.add('selected');
+				}
+				this.lis.push(li);
+				a.appendChild(li);
+				this.ul.appendChild(a);
+				a.addEventListener('click', function(e) {
+					// This if statement lets command-click open
+					// a new tab as normal.
+					if (e.isDefaultPrevented || e.metaKey || e.ctrlKey) {
+						return;
+					}
+					e.preventDefault();
+					var uri = '?tab=' + i;
+					history.pushState({tab: i}, '', uri);
+					window.dispatchEvent(new Event('popstate'));
+				}.bind(this), true);
+			}.bind(this));
+			el.parentNode.replaceChild(this.ul, el);
+		},
+		update: function() {
+			if (this.ul) {
+				var c = Model.currentTab;
+				for (var i = 0; i < this.tabs.length; i++) {
+					if (i === c) {
+						this.lis[i].classList.add('selected');
+					} else {
+						this.lis[i].classList.remove('selected');
+					}
+				}
+			}
+		}
+	};
+	Body.addSubview(TabList);
+	Model.addObserver(TabList);
+
+	[0, 1, 2].forEach(function(i) {
+		var view = {
+			updateClass: function() {
+				if (Model.currentTab === i) {
+					this.div.setAttribute('class', 'selectedbody');
+				} else {
+					this.div.setAttribute('class', 'unselectedbody');
+				}
+			},
+			writeOver: function(el) {
+				this.div = document.createElement('div');
+				this.div.textContent = 'I am tab ' + i + '!';
+				this.updateClass();
+				el.parentNode.replaceChild(this.div, el);
+			},
+			update: function() {
+				if (this.div) {
+					this.updateClass();
+				}
+			}
+		};
+		Body.addSubview(view);
+		Model.addObserver(view);
+	});
+
+	/*
+	   Now that the visible portion of our interface is set up,
+	   we turn to the invisible view that interacts with the URL.
+	   Since it won't be rendered, we don't give it a writeOver
+	   method. Instead, we will give it a syncToModel method
+	   to be called on DOMContentLoaded.
+	 */
+	var URLView = {
+		tabFromSearch: function() {
+			var search = window.location.search.substr(1);
+			var searchComponents = search.split('&');
+			for (var i = 0; i < searchComponents.length; i++) {
+				var c = searchComponents[i];
+				var idx = c.indexOf('=');
+				var k = decodeURIComponent(c.substr(0, idx));
+				var v = decodeURIComponent(c.substr(idx+1));
+				if (k === 'tab') {
+					return parseInt(v);
+				}
+			};
+			return null;
+		},
+		syncToModel: function() {
+			var tab = this.tabFromSearch();
+			if (tab) {
+				Model.selectTab(tab)
+			};
+			window.addEventListener('popstate', function(event) {
+				Model.selectTab(this.tabFromSearch());
+			}.bind(this));
+			this.synced = true;
+		},
+		update: function() {
+			if (this.synced) {
+				var tabInUri = this.tabFromSearch();
+				if (tabInUri !== Model.currentTab) {
+					window.location.search = 'tab=' + encodeURIComponent(Model.currentTab);
+				}
+			}
+		}
+	};
+	Model.addObserver(URLView);
+	
+	
+	document.addEventListener('DOMContentLoaded', function() {
+		URLView.syncToModel();
+		Body.show();
+	});
+	</script>
+</html>
