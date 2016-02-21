@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Program 9 - Releasing views</title>
+		<style>
+		body {
+			max-width: 30em;
+			margin-left: auto;
+			margin-right: auto;
+			margin-top: 4em;
+		}
+		div.buttons {
+			text-align: right;
+		}
+		</style>
+	</head>
+	<body>
+	</body>
+	<script type="text/javascript">
+	/*
+	   Program 9 - Releasing views
+
+	   All the examples so far have used a fixed set of views. Now we turn
+	   to cases when views are created and deleted, and handling the
+	   bookkeeping required to delete views without memory leaks.
+
+	   Our example will be a simple wizard, taking the user through
+	   a series of three screens. In production, you would probably
+	   also show the current screen in the URL as we did for tabs,
+	   but we will omit that here since what we are interested in is
+	   how to cleanly delete views.
+
+	   As usual, we begin with an observable, and a very simple model
+	   containing the current view and a single text field that we
+	   will set to a value input in a text box on the second screen
+	   of the wizard.
+	 */
+	var Observable = {
+		addObserver: function(observer) {
+			this.observers.add(observer);
+		},
+
+		deleteObserver: function(observer) {
+			this.observers.delete(observer);
+		},
+
+		notify: function() {
+			this.observers.forEach(function(observer) {
+				observer.update();
+			});
+		}
+	};
+	var Model = Object.create(Observable, {
+		observers: { writable: true, value: new Set() },
+		name: { writable: true, value: '' },
+	});
+	Model.setName = function(name) {
+		this.name = name;
+		this.notify();
+	};
+
+	/*
+	   As usual, we need a root view to contain our other views.
+	 */
+	var Body = {
+		subviews: new Set(),
+		addSubview: function(subview) {
+			this.subviews.add(subview);
+		},
+		show: function() {
+			currentScreen: { writeable: true }
+			var fragment = document.createDocumentFragment();
+			var div = document.createElement('div');
+			fragment.appendChild(div);
+			this.subviews.forEach(function(subview) {
+				var el = document.createElement('div');
+				div.appendChild(el);
+				subview.writeOver(el);
+			}, this);
+			document.body.appendChild(fragment);
+		}
+	};
+
+	/*
+	   Next we define the three views. Each of them have the familiar
+	   methods, but with a new one: release. Release is called when 
+	   a view is to be removed. It should stop the view from observing
+	   any observables and clear any resources. It should *not* remove
+	   the view from the DOM. That will be done by whatever is replacing
+	   the view.
+
+	   This is also why we have been using writeOver for views instead
+	   of something like appendTo(parent). If we release and replace the
+	   second view of five in a parent element, writeOver can do so
+	   directly with no further bookkeeping. With appendTo, we would
+	   have to somehow pass around information about where the view
+	   fell among its siblings.
+	 */
+
+	var Screen0 = {
+		writeOver: function(el) {
+			this.div = document.createElement('div');
+
+			var p = document.createElement('p');
+			p.textContent = 'Enter your name on the next screen.';
+			this.div.appendChild(p);
+
+			var buttons = document.createElement('div');
+			buttons.setAttribute('class', 'buttons');
+
+			var next = document.createElement('button');
+			next.textContent = 'Next';
+			next.addEventListener('click', function() {
+				Model.addObserver(Screen1);
+				Screen1.writeOver(this.div);
+				this.release();
+			}.bind(this));
+			buttons.appendChild(next);
+			
+			this.div.appendChild(buttons);
+			el.parentNode.replaceChild(this.div, el);
+		},
+		release: function() {
+			Model.deleteObserver(Screen0);
+			// We must release all references to DOM elements
+			// or the garbage collector will not be able to
+			// collect them, even though the are gone from the DOM.
+			this.div = null;
+		},
+		update: function() {
+			// Nothing to do here
+		}
+	};
+
+	var Screen1 = {
+		writeOver: function(el) {
+			this.div = document.createElement('div');
+
+			var input = document.createElement('input');
+			input.setAttribute('type', 'text');
+			input.setAttribute('placeholder', 'Your name');
+			input.setAttribute('value', Model.name);
+			input.addEventListener('input', function() {
+				Model.setName(this.input.value);
+			}.bind(this));
+			this.div.appendChild(input);
+			this.input = input;
+
+			var buttons = document.createElement('div');
+			buttons.setAttribute('class', 'buttons');
+
+			var back = document.createElement('button');
+			back.textContent = 'Back';
+			back.addEventListener('click', function() {
+				Model.addObserver(Screen0);
+				Screen0.writeOver(this.div);
+				this.release();
+			}.bind(this));
+			buttons.appendChild(back);
+
+			var next = document.createElement('button');
+			next.textContent = 'Next';
+			next.addEventListener('click', function() {
+				Model.addObserver(Screen2);
+				Screen2.writeOver(this.div);
+				this.release();
+			}.bind(this));
+			buttons.appendChild(next);
+			
+			this.div.appendChild(buttons);
+			el.parentNode.replaceChild(this.div, el);
+		},
+		release: function() {
+			Model.deleteObserver(this);
+			this.div = null;
+			this.input = null;
+		},
+		update: function() {
+			if (this.input) {
+				if (this.input.value !== Model.name) {
+					this.input.value = Model.name;
+				}
+			}
+		}
+	};
+
+	var Screen2 = {
+		writeOver: function(el) {
+			this.div = document.createElement('div');
+
+			var p = document.createElement('p');
+			p.appendChild(document.createTextNode('Hello, '));
+			var span = document.createElement('span');
+			span.textContent = Model.name;
+			this.span = span;
+			p.appendChild(span);
+			this.div.appendChild(p);
+
+			var buttons = document.createElement('div');
+			buttons.setAttribute('class', 'buttons');
+
+			var next = document.createElement('button');
+			next.textContent = 'Back';
+			next.addEventListener('click', function() {
+				Model.addObserver(Screen1);
+				Screen1.writeOver(this.div);
+				this.release();
+			}.bind(this));
+			buttons.appendChild(next);
+			
+			this.div.appendChild(buttons);
+			el.parentNode.replaceChild(this.div, el);
+		},
+		release: function() {
+			Model.deleteObserver(this);
+			this.div = null;
+			this.span = null;
+		},
+		update: function() {
+			if (this.span) {
+				if (this.span.textContent !== Model.name) {
+					this.span.textContent = Model.name;
+				}
+			}
+		}
+	};
+
+	document.addEventListener('DOMContentLoaded', function() {
+		Model.addObserver(Screen0);
+		Body.addSubview(Screen0);
+		Body.show();
+	});
+	</script>
+</html>
