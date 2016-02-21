@@ -140,8 +140,9 @@
 				a.appendChild(li);
 				this.ul.appendChild(a);
 				a.addEventListener('click', function(e) {
-					// This if statement lets command-click open
-					// a new tab as normal.
+					// This if statement lets command-click or control-click
+					// open a new tab, matching the default behavior of browsers
+					// if no JavaScript interfered.
 					if (e.isDefaultPrevented || e.metaKey || e.ctrlKey) {
 						return;
 					}
@@ -236,7 +237,6 @@
 		}
 	};
 	Model.addObserver(URLView);
-	
 	
 	document.addEventListener('DOMContentLoaded', function() {
 		URLView.syncToModel();
