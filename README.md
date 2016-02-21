@@ -35,6 +35,7 @@ Material still to be written:
 * Tabs again as small multiples
 * Loading and syncing to remote models
 * Lazily loading data
+* Composing models - Control states and actions
 * Drop and drop
 * Undo/redo
 * Pluralization
