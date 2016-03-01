@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+	<head>
+	<title>Program 11 - Sorting and filtering small multiples</title>
+	<style>
+	span.editable-label.label {
+		padding: 0.2em;
+	}
+	span.editable-label.label:hover {
+		padding: 0.1em;
+		border: 0.1em solid #aaa;
+		cursor: hand;
+	}
+	span.editable-label > button.check {
+		color: green;
+	}
+
+	span.editable-label > button.x {
+		color: red;
+	}
+	</style>
+	</head>
+	<body>
+	</body>
+	<script type="text/javascript">
+	/*
+	   Program 11 - Sorting and filtering small multiples
+
+	   The list we displayed in program 10 was rather static. In most real
+	   interfaces displaying small multiples we want to be able to sort
+	   them on different criteria and filter what is actually displayed.
+
+	   Our example for this will be a table of records, each record having
+	   the fields first name, last name, and phone number. The user will
+	   be able to insert and edit new records, sort the table based on each
+	   column, and put in filter text to filter the table.
+
+	   We will have a button at the top to insert a new row in the table,
+	   followed by a table with four columns. The first three columns
+	   show the first name, last name, and phone number. The last column
+	   has a button to delete the row.
+	 */
+	function Observable() {
+		this.observers = new Set();
+		
+		this.addObserver = function(observer) {
+			this.observers.add(observer);
+		};
+
+		this.deleteObserver = function(observer) {
+			this.observers.delete(observer);
+		};
+
+		this.notify = function() {
+			this.observers.forEach(function(observer) {
+				observer.update();
+			});
+		};
+	}
+
+	var People = new Observable();
+	People.test = "Boris";
+	People.setTest = function(s) {
+		this.test = s;
+		this.notify();
+	};
+	
+	People.people = [];
+	People.insertPerson = function(person) {
+		this.people.unshift(person);
+		this.notify();
+	};
+	People.removePersonAt = function(i) {
+		this.people.splice(i, 1);
+		this.notify();
+	};
+	People.updatePersonAt = function(i, newPerson) {
+		this.people[i] = newPerson;
+		this.notify();
+	};
+
+	function writeSubviewsIn(el, subviews) {
+		subviews.forEach(function(subview) {
+			var subEl = document.createElement('div');
+			el.appendChild(subEl);
+			subview.writeOver(subEl);
+		}, this);
+	}
+
+	/*
+	   The fields of our table will be labels that turn into text inputs
+	   when clicked. Clicking a green check mark at the right of the box
+	   or typing enter will commit changes to the text box. Clicking a
+	   red X at the right of the box or typing escape will cancel the
+	   changes. After commiting or canceling, the text box returns to
+	   being a label.
+
+	   Its controller protocol is:
+
+	   Required:
+	   - getText() -> string
+	   - setText(string)
+	   Optional:
+	   - getClass() -> string
+	   - getPlaceholder() -> string
+	 */
+	function EditableLabel(model, controller) {
+		model.addObserver(this);
+		this.editing = false;
+		this.writeOver = function(el) {
+			this.writeLabelOver(el);
+		};
+
+		this.writeLabelOver = function(el) {
+			this.editing = false;
+			var span = document.createElement('span');
+			span.classList.add('editable-label');
+			span.classList.add('label');
+			if (controller.getClass) {
+				div.classList.add(controller.getClass());
+			}
+			span.textContent = controller.getText();
+			span.addEventListener('click', function() {
+				this.writeInputOver(span);
+			}.bind(this));
+
+			el.parentNode.replaceChild(span, el);
+			this.el = span;
+		};
+
+		this.writeInputOver = function(el) {
+			this.editing = true;
+			
+			var span = document.createElement('span');
+			span.classList.add('editable-label');
+			span.classList.add('editing');
+
+			var input = document.createElement('input');
+			if (controller.getClass) {
+				input.classList.add(controller.getClass());
+			}
+			if (controller.getPlaceholder) {
+				input.setAttribute('placeholder',
+					controller.getPlaceholder());
+			}
+			input.setAttribute('value', controller.getText());
+			span.appendChild(input);
+
+			var confirm = document.createElement('button');
+			confirm.textContent = '\u2713'; // Check mark
+			confirm.classList.add('check');
+			confirm.addEventListener('click', function() {
+				if (input.value !== controller.getText()) {
+					controller.setText(input.value);
+				}
+				this.writeLabelOver(this.el);
+			}.bind(this));
+			span.appendChild(confirm);
+
+			var cancel = document.createElement('button');
+			cancel.textContent = '\u2717'; // X mark
+			cancel.classList.add('x');
+			cancel.addEventListener('click', function() {
+				this.writeLabelOver(this.el);
+			}.bind(this));
+			span.appendChild(cancel);
+			
+			this.el = span;
+			el.parentNode.replaceChild(span, el);
+		};
+
+		this.release = function() {
+			this.el = null;
+			this.model.deleteObserver(this);
+		};
+
+		this.update = function() {
+			if (!this.editing && this.el) {
+				this.el.textContent = controller.getText();
+			}
+		};
+	}
+
+	var Body = {
+		subviews: new Set(),
+		addSubview: function(subview) {
+			this.subviews.add(subview);
+		},
+		show: function() {
+			currentScreen: { writeable: true }
+			var fragment = document.createDocumentFragment();
+			var div = document.createElement('div');
+			fragment.appendChild(div);
+			writeSubviewsIn(div, this.subviews);
+			document.body.appendChild(fragment);
+		}
+	};
+	Body.addSubview(new EditableLabel(People, {
+		getText: function() { return People.test; },
+		setText: function(s) { People.setTest(s); },
+		getPlaceholder: function() { return 'abc'; }
+	}));
+	
+	document.addEventListener('DOMContentLoaded', function() {
+		Body.show()
+	});
+	</script>
+</html>
