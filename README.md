@@ -36,9 +36,15 @@ Material still to be written:
 * Loading and syncing to remote models
 * Lazily loading data
 * Composing models - Control states and actions
-* Drop and drop
+* Drag and drop
 * Undo/redo
 * Pluralization
+
+Techniques that I want to revise:
+* Make Observable a constructor function instead of trying to provide a prototype.
+* Revise Controllers so they don't need an initialize method.
+* Factor out rendering a sequence of subviews into a single function.
+* Adding and removing classes from elements in a structured way.
 
 Technologies that I wish were ready, but aren't broadly enough supported:
 * HTML5 context menus
@@ -46,6 +52,12 @@ Technologies that I wish were ready, but aren't broadly enough supported:
 * Grid layout
 * Internationalization API (ECMA 402)
 * ECMAScript 6 modules
+
+Code that would be worth pulling out for reuse:
+* Observable
+* Root views such as Body and TwoColumn
+* UrlView
+* Widgets such as Button, Label, and TextBox
 
 ## License
 
