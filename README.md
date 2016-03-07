@@ -28,9 +28,9 @@ The code depends on conservative choices of technology. The JavaScript is all EC
 * Program 7 - Composite views
 * Program 8 - Manipulating the URL
 * Program 9 - Releasing views
+* Program 10 - Small multiples - Lists
 
 Material still to be written:
-* Small multiples - Lists
 * Sorting and filtering small multiples - Tables
 * Tabs again as small multiples
 * Loading and syncing to remote models
