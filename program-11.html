@@ -59,11 +59,6 @@
 	}
 
 	var People = new Observable();
-	People.test = "Boris";
-	People.setTest = function(s) {
-		this.test = s;
-		this.notify();
-	};
 	
 	People.people = [];
 	People.insertPerson = function(person) {
@@ -109,7 +104,7 @@
 		this.editing = false;
 		this.writeOver = function(el) {
 			this.writeLabelOver(el);
-		};
+	};
 
 		this.writeLabelOver = function(el) {
 			this.editing = false;
@@ -180,6 +175,74 @@
 			}
 		};
 	}
+	/*
+	   Controller protocol:
+	   - getColumnOrder() -> [key]
+	   - getColumnLabel(key) -> string
+	   - writeCellOver(row, column_key, el) -> subview
+	*/
+	function Table(model, controller) {
+		this.state = new Observable();
+		model.addObserver(this);
+		/*
+		   To add:
+		   - column order
+		   - row order
+		   - filter
+		 */
+
+		this.writeOver = function(el) {
+			var columns = controller.getColumnOrder();
+			var row, cell, div;
+			
+			var table = document.createElement('table');
+			var thead = document.createElement('thead');
+			table.appendChild(thead);
+			
+			row = document.createElement('tr');
+			thead.appendChild(row);
+
+			for (var i = 0; i < columns.length; i++) {
+				cell = document.createElement('th');
+				cell.textContent = controller.getColumnLabel(
+					columns[i]
+				);
+				row.appendChild(cell);
+			}
+
+			var tbody = document.createElement('tbody');
+			table.appendChild(tbody);
+			var N = controller.getNItems();
+			for (var i = 0; i < N; i++) {
+				row = document.createElement('tr');
+				tbody.appendChild(row);
+				item = controller.getItem(i);
+				for (var j = 0; j < columns.length; j++) {
+					cell = document.createElement('td');
+					div = document.createElement('div');
+					cell.appendChild(div);
+					controller.writeCellOver(i, columns[j], div);
+					row.appendChild(cell);
+				}
+			}
+			
+			this.table = table;
+			el.parentNode.replaceChild(table, el);
+		};
+		
+		this.update = function() {
+			if (this.table) {
+				this.writeOver(this.table);
+			}
+		};
+
+		this.release = function() {
+			this.table = null;
+			model.deleteObserver(this);
+			this.state.deleteObserver(this);
+			this.state = null;
+		}
+	}
 
 	var Body = {
 		subviews: new Set(),
@@ -195,14 +258,49 @@
 			document.body.appendChild(fragment);
 		}
 	};
-	Body.addSubview(new EditableLabel(People, {
-		getText: function() { return People.test; },
-		setText: function(s) { People.setTest(s); },
-		getPlaceholder: function() { return 'abc'; }
-	}));
 	
+	Body.addSubview(new Table(People, {
+		getColumnOrder: function() {
+			return ['first', 'last', 'phone'];
+		},
+		columnLabels: {
+			'first': 'First name',
+			'last': 'Last name',
+			'phone': 'Phone number'
+		},
+		getColumnLabel: function(key) {
+			return this.columnLabels[key];
+		},
+		getNItems: function() {
+			return People.people.length;
+		},
+		getItem: function(i) {
+			return People.people[i];
+		},
+		writeCellOver: function(row, column_key, el) {
+			var label = new EditableLabel(People, {
+				getText: function() {
+					return People.people[row][column_key];
+				},
+				setText: function(s) {
+					p = People.people[row];
+					p[column_key] = s;
+					People.updatePersonAt(row, p);
+				}
+			});
+			label.writeOver(el);
+			return label;
+		}
+	}));
+
+	People.insertPerson({
+		first: 'Boris',
+		last: 'Gudenov',
+		phone: '206-484-4377'
+	});
+
 	document.addEventListener('DOMContentLoaded', function() {
-		Body.show()
+		Body.show();
 	});
 	</script>
 </html>
