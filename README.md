@@ -18,17 +18,17 @@ The code depends on conservative choices of technology. The JavaScript is all EC
 
 ## Contents
 
-* Program 0 - Observables
-* Program 1 - Views
-* Program 2 - View trees
-* Program 3 - Deeper view trees
-* Program 4 - Push protocols in models
-* Program 5 - Reusable views and controllers
-* Program 6 - More reusable views and controllers
-* Program 7 - Composite views
-* Program 8 - Manipulating the URL
-* Program 9 - Releasing views
-* Program 10 - Small multiples - Lists
+* [Program 0 - Observables](program-0.html)
+* [Program 1 - Views](program-1.html)
+* [Program 2 - View trees](program-2.html)
+* [Program 3 - Deeper view trees](program-3.html)
+* [Program 4 - Push protocols in models](program-4.html)
+* [Program 5 - Reusable views and controllers](program-5.html)
+* [Program 6 - More reusable views and controllers](program-6.html)
+* [Program 7 - Composite views](program-7.html)
+* [Program 8 - Manipulating the URL](program-8.html)
+* [Program 9 - Releasing views](program-9.html)
+* [Program 10 - Small multiples - Lists](program-10.html)
 
 Material still to be written:
 * Sorting and filtering small multiples - Tables
