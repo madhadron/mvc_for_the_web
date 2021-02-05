@@ -6,6 +6,20 @@ Start with `program-0.html`. Read the code and the extensive comments explaining
 
 **Note**: There are many more examples yet to write. The programs here are barely the beginning of what needs to be conveyed.
 
+## Contents
+
+* [Program 0 - Observables](program-0.html)
+* [Program 1 - Views](program-1.html)
+* [Program 2 - View trees](program-2.html)
+* [Program 3 - Deeper view trees](program-3.html)
+* [Program 4 - Push protocols in models](program-4.html)
+* [Program 5 - Reusable views and controllers](program-5.html)
+* [Program 6 - More reusable views and controllers](program-6.html)
+* [Program 7 - Composite views](program-7.html)
+* [Program 8 - Manipulating the URL](program-8.html)
+* [Program 9 - Releasing views](program-9.html)
+* [Program 10 - Small multiples - Lists](program-10.html)
+
 ## For the less impatient
 
 The programs in this repository grew out of my attempts to learn how to write programs with graphical interfaces. Professionally, I needed to produce web interfaces, so I chose that substrate, though I chose to learn from the much more mature world of desktop environments, particularly Cocoa and Gtk+. This repository contains of a series of programs distilling what I have learned. They all use the set of techniques that go under the name of Model-View-Controller, or MVC.
@@ -16,18 +30,7 @@ The examples consist of single, self contained HTML files. All CSS and JavaScrip
 
 The code depends on conservative choices of technology. The JavaScript is all ECMAScript 5, except for using ECMAScript 6's Set collection, which is fairly broadly supported. The page layouts use the traditional box model. I do use the HTML5 doctype and elements, but don't impose very onerous burdens on it. Everything should work in most modern browsers.
 
-## Contents
-
-* Program 0 - Observables
-* Program 1 - Views
-* Program 2 - View trees
-* Program 3 - Deeper view trees
-* Program 4 - Push protocols in models
-* Program 5 - Reusable views and controllers
-* Program 6 - More reusable views and controllers
-* Program 7 - Composite views
-* Program 8 - Manipulating the URL
-* Program 9 - Releasing views
+## Further work
 
 Material still to be written:
 * Sorting and filtering small multiples - Tables
